@@ -1,0 +1,19 @@
+{
+  "name": "@repo/ui-components",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./mod.ts"
+  },
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "imports": {
+    "lit": "npm:lit@^3.1.0",
+    "lit/decorators.js": "npm:lit@^3.1.0/decorators.js",
+    "lit/directives/map.js": "npm:lit@^3.1.0/directives/map.js"
+  }
+}

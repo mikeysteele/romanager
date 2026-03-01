@@ -1,0 +1,6 @@
+node_modules
+.vite
+cov_profile
+.env
+dist
+romanager.db

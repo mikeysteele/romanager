@@ -1,0 +1,12 @@
+{
+  "name": "@repo/shared",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./mod.ts",
+    "./types": "./types.ts",
+    "./utils": "./utils.ts"
+  },
+  "imports": {
+    "zod": "npm:zod@^3.22.4"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@romanager/api",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./main.ts"
+  },
+  "tasks": {
+    "dev": "deno run --watch --allow-net --allow-read --allow-write main.ts"
+  },
+  "imports": {
+    "@hono/hono": "jsr:@hono/hono@^4.0.0",
+    "@hono/hono/serve-static": "jsr:@hono/hono@^4.0.0/serve-static",
+    "@hono/hono/deno": "jsr:@hono/hono@^4.0.0/deno",
+    "@smallweb/webdav": "jsr:@smallweb/webdav@^0.0.1",
+    "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
+    "@std/fs": "jsr:@std/fs@^0.217.0",
+    "@std/path": "jsr:@std/path@^0.217.0",
+    "@std/crypto": "jsr:@std/crypto@^0.217.0",
+    "@repo/shared": "file:../../packages/shared/mod.ts"
+  }
+}

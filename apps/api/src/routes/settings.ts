@@ -1,0 +1,28 @@
+import { Hono } from "@hono/hono";
+import { getSettings, upsertSetting } from "../db/queries.ts";
+
+export const createSettingsRouter = (worker: Worker) => {
+    const settingsRouter = new Hono();
+
+    settingsRouter.get("/", async (c) => {
+        const settings = await getSettings();
+        return c.json(settings);
+    });
+
+    settingsRouter.post("/", async (c) => {
+        const body = await c.req.json();
+        const { key, value } = body;
+        if (!key || !value) return c.json({ error: "Missing key or value" }, 400);
+        const result = await upsertSetting(key, value);
+        
+        // Trigger scan if roms_dir changes
+        if (key === 'roms_dir') {
+            console.log('scanning') 
+            worker.postMessage({ command: 'scan', path: value });
+        }
+        
+        return c.json(result);
+    });
+
+    return settingsRouter;
+};

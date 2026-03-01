@@ -1,0 +1,2 @@
+[0m[32mTask[0m [0m[36mstart[0m deno run --allow-net --allow-read --allow-write apps/api/main.ts
+Listening on http://0.0.0.0:8001/ (http://localhost:8001/)

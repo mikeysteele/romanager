@@ -1,0 +1,46 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns", "deno.unstable"],
+    "experimentalDecorators": true
+  },
+  "workspace": [
+    "./apps/api",
+    "./apps/ui",
+    "./packages/shared",
+    "./packages/ui-components"
+  ],
+  "tasks": {
+    "db:generate": "npx drizzle-kit generate --config=apps/api/drizzle.config.ts",
+    "db:migrate": "npx drizzle-kit migrate --config=apps/api/drizzle.config.ts",
+    "db:push": "npx drizzle-kit push --config=apps/api/drizzle.config.ts",
+    "dev:api": "deno run --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-ffi --watch apps/api/main.ts",
+    "test:api": "rm -f test.db && DB_URL=file:test.db npx drizzle-kit push --config=apps/api/drizzle.config.ts > /dev/null && DB_URL=file:test.db deno test --allow-read --allow-env --allow-net --allow-sys --allow-ffi --no-check tests/api",
+    "build:ui": "deno task --cwd apps/ui build",
+    "dev:ui": "deno task --cwd apps/ui dev",
+    "bddgen": "deno run -A npm:playwright-bdd test",
+    "test:bdd": "deno task bddgen && deno run -A npm:playwright test",
+    "dev": "deno task dev:ui & deno task dev:api"
+  },
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@libsql/client": "npm:@libsql/client@^0.17.0",
+    "@std/assert": "jsr:@std/assert@^0.217.0",
+    "@std/fs": "jsr:@std/fs@^0.217.0",
+    "@std/path": "jsr:@std/path@^0.217.0",
+    "count-lines": "npm:count-lines@^0.1.2",
+    "drizzle-kit": "npm:drizzle-kit@^0.31.8",
+    "drizzle-orm": "npm:drizzle-orm@^0.45.1",
+    "playwright": "npm:playwright@^1.41.2",
+    "playwright-bdd": "npm:playwright-bdd@^8.4.2",
+    "@playwright/test": "npm:@playwright/test@^1.58.2",
+    "jsdom": "npm:jsdom@^24.0.0",
+    "zod": "npm:zod@^3.22.4",
+    "drizzle-zod": "npm:drizzle-zod@^0.5.1"
+  },
+  "lint": {
+    "rules": {
+        "tags": ["recommended"],
+        "include": ["no-explicit-any"]
+    }
+  }
+}
