@@ -5,3 +5,7 @@ export * from "./src/ui-search-input/ui-search-input.ts";
 export * from "./src/ui-tabs/ui-tabs.ts";
 export * from "./src/ui-button/ui-button.ts";
 export * from "./src/ui-dialog/ui-dialog.ts";
+export * from "./src/ui-toast/ui-toast.ts";
+export * from "./src/ui-toast/ui-toast-container.ts";
+export * from "./src/ui-folder-browser/ui-folder-browser.ts";
+export * from "./src/ui-page-header/ui-page-header.ts";

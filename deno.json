@@ -34,6 +34,7 @@
     "playwright-bdd": "npm:playwright-bdd@^8.4.2",
     "@playwright/test": "npm:@playwright/test@^1.58.2",
     "jsdom": "npm:jsdom@^24.0.0",
+    "open-props": "npm:open-props@^1.7.5",
     "zod": "npm:zod@^3.22.4",
     "drizzle-zod": "npm:drizzle-zod@^0.5.1"
   },

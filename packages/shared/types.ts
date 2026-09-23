@@ -8,6 +8,23 @@ export const SystemSchema = z.object({
 });
 export type System = z.infer<typeof SystemSchema>;
 
+export const SystemFirmwareSchema = z.object({
+  id: z.string(),
+  systemId: z.string(),
+  filename: z.string(),
+  description: z.string().optional().nullable(),
+  path: z.string(),
+  md5: z.string().optional().nullable(),
+  crc32: z.string().optional().nullable(),
+  createdAt: z.string().optional(),
+});
+export type SystemFirmware = z.infer<typeof SystemFirmwareSchema>;
+
+export const SystemReadSchema = SystemSchema.extend({
+    firmware: z.array(SystemFirmwareSchema).optional()
+});
+export type SystemRead = z.infer<typeof SystemReadSchema>;
+
 export const PlatformSchema = z.object({
     id: z.string(),
     name: z.string(),
@@ -73,3 +90,14 @@ export interface Config {
   webdavPort: number;
   apiPort: number;
 }
+
+export const FileTypeWhitelistSchema = z.object({
+  id: z.string(),
+  extension: z.string(),
+  magicNumber: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  enabled: z.boolean().default(true),
+  createdAt: z.string().optional(),
+});
+export type FileTypeWhitelist = z.infer<typeof FileTypeWhitelistSchema>;
+

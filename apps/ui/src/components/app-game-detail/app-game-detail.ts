@@ -1,5 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { toast } from '@repo/ui-components';
 import '@repo/ui-components';
 import { fetchAndValidate, GameReadSchema, type GameRead, type Rom } from '@repo/shared';
 import z from "zod";
@@ -29,11 +30,22 @@ function renderFilesTable(game: GameRead | undefined | null, onDelete: (id: stri
           `;
   }
 
+  // Deduplicate platforms by name as safeguard
+  const uniquePlatforms: typeof game.platforms = [];
+  const seen = new Set<string>();
+  for (const plat of game.platforms) {
+    const key = plat.name.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniquePlatforms.push(plat);
+    }
+  }
+
   return html`
         <div class="files-section">
             <h3 class="section-header">Files</h3>
             <ui-tabs>
-                ${game?.platforms.map(platform => html`
+                ${uniquePlatforms.map(platform => html`
                     <ui-tab-panel name="${platform.name}">
                         <table class="files-table">
                             <thead>
@@ -523,15 +535,15 @@ export class AppGameDetail extends LitElement {
         method: 'DELETE',
       });
 
-      if (!res.ok) {
-        throw new Error('Failed to delete game');
+      if (res.ok) {
+        toast('Game deleted successfully', 'success');
+        location.href = '/';
+      } else {
+        toast('Failed to delete game', 'error');
       }
-
-      // Redirect to library after successful deletion
-      globalThis.location.href = '/';
     } catch (e) {
-      console.error('Failed to delete game', e);
-      alert('Failed to delete game');
+      console.error('Delete error', e);
+      toast('Failed to delete game', 'error');
     } finally {
       this.deleting = false;
       this.showDeleteModal = false;
@@ -545,8 +557,8 @@ export class AppGameDetail extends LitElement {
       if (!res.ok) throw new Error("Failed to dispatch ROM deletion");
       await this.checkAndFetch();
     } catch (e) {
-      console.error('Failed to delete ROM', e);
-      alert('Failed to delete ROM');
+      console.error('Delete ROM error', e);
+      toast('Failed to delete ROM', 'error');
     }
   }
 

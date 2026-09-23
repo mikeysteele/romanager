@@ -11,6 +11,21 @@ export const systems = sqliteTable("systems", {
 export const insertSystemSchema = createInsertSchema(systems);
 export const selectSystemSchema = createSelectSchema(systems);
 
+export const systemFirmware = sqliteTable("system_firmware", {
+  id: text("id").primaryKey(),
+  systemId: text("system_id").notNull().references(() => systems.id),
+  filename: text("filename").notNull(),
+  description: text("description"),
+  path: text("path").notNull().unique(),
+  md5: text("md5"),
+  crc32: text("crc32"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});
+export const insertSystemFirmwareSchema = createInsertSchema(systemFirmware);
+export const selectSystemFirmwareSchema = createSelectSchema(systemFirmware);
+
 export const games = sqliteTable("games", {
   id: text("id").primaryKey(), // RAWG ID or UUID
   name: text("name").notNull(),
@@ -58,6 +73,7 @@ export const scannedFiles = sqliteTable("scanned_files", {
   path: text("path").notNull().unique(),
   filename: text("filename").notNull(),
   size: integer("size", { mode: 'number' }).notNull(),
+  ignored: integer("ignored", { mode: 'boolean' }).notNull().default(false),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(CURRENT_TIMESTAMP)`),
@@ -83,3 +99,17 @@ export const gamePlatforms = sqliteTable("game_platforms", {
 });
 export const insertGamePlatformSchema = createInsertSchema(gamePlatforms);
 export const selectGamePlatformSchema = createSelectSchema(gamePlatforms);
+
+export const fileTypeWhitelist = sqliteTable("file_type_whitelist", {
+  id: text("id").primaryKey(),
+  extension: text("extension").notNull(),
+  magicNumber: text("magic_number"),
+  description: text("description"),
+  enabled: integer("enabled", { mode: 'boolean' }).notNull().default(true),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});
+export const insertFileTypeWhitelistSchema = createInsertSchema(fileTypeWhitelist);
+export const selectFileTypeWhitelistSchema = createSelectSchema(fileTypeWhitelist);
+

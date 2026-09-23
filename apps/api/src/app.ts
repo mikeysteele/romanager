@@ -14,6 +14,9 @@ import { createSettingsRouter } from "./routes/settings.ts";
 import { metadataRouter } from "./routes/metadata.ts";
 import { eventsRouter } from "./routes/events.ts";
 import { unmappedRouter } from "./routes/unmapped.ts";
+import { firmwareRouter } from "./routes/firmware.ts";
+import { fileTypesRouter } from "./routes/fileTypes.ts";
+import { filesystemRouter } from "./routes/filesystem.ts";
 
 export default function createServer(romsDir: string, appDir: string) {
     const app = new Hono();
@@ -44,6 +47,10 @@ export default function createServer(romsDir: string, appDir: string) {
     app.route("/api/settings", createSettingsRouter(worker));
     app.route("/api/metadata", metadataRouter);
     app.route("/api/unmapped", unmappedRouter);
+    app.route("/api/firmware", firmwareRouter);
+    app.route("/api/file-types", fileTypesRouter);
+    app.route("/api/filesystem", filesystemRouter);
+
 
     // Serve frontend
     app.use("/*", serveStatic({

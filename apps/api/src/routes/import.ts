@@ -1,27 +1,35 @@
 import { Hono } from "@hono/hono";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.ts";
-import { games, scannedFiles, roms, systems, gamePlatforms } from "../db/schema.ts";
+import { games, scannedFiles, roms, systems, platforms, gamePlatforms } from "../db/schema.ts";
 import { generateId, slugify } from "../utils.ts";
 
 export const importRouter = new Hono();
 
 importRouter.post("/", async (c) => {
     const body = await c.req.json();
-    const { scannedFileId, gameId, systemId, region, gameData } = body;
+    const { scannedFileId, scannedFileIds, gameId, systemId, region, gameData } = body;
 
-    if (!scannedFileId || (!gameId && !gameData) || !systemId) {
+    const fileIds: string[] = Array.isArray(scannedFileIds) && scannedFileIds.length > 0
+        ? scannedFileIds
+        : (scannedFileId ? [scannedFileId] : []);
+
+    if (fileIds.length === 0 || (!gameId && !gameData) || !systemId) {
         return c.json({ error: "Missing required fields" }, 400);
     }
 
     try {
         await db.transaction(async (tx) => {
-            // 1. Get Scanned File
-            const scannedFile = await tx.select().from(scannedFiles).where(eq(scannedFiles.id, scannedFileId)).get();
-            if (!scannedFile) throw new Error("Scanned file not found");
+            // 1. Get Scanned Files
+            const filesToImport = [];
+            for (const fileId of fileIds) {
+                const scannedFile = await tx.select().from(scannedFiles).where(eq(scannedFiles.id, fileId)).get();
+                if (!scannedFile) throw new Error(`Scanned file not found: ${fileId}`);
+                filesToImport.push(scannedFile);
+            }
 
-            // 1.5 Ensure System Exists Locally
-            const sys = await tx.select().from(systems).where(eq(systems.id, systemId)).get();
+            // 1.5 Ensure System and Platform Exist Locally
+            let sys = await tx.select().from(systems).where(eq(systems.id, systemId)).get();
             if (!sys) {
                 // Fetch from RAWG to create it
                 const apiKey = Deno.env.get("RAWG_API_KEY");
@@ -29,12 +37,20 @@ importRouter.post("/", async (c) => {
                 const pRes = await fetch(`https://api.rawg.io/api/platforms/${systemId}?key=${apiKey}`);
                 if (!pRes.ok) throw new Error("Invalid systemId: could not fetch from RAWG.");
                 const pData = await pRes.json();
-                await tx.insert(systems).values({
+                const newSys = {
                     id: String(pData.id),
                     name: pData.name,
                     slug: pData.slug
-                });
+                };
+                await tx.insert(systems).values(newSys);
+                sys = { ...newSys, path: null };
             }
+
+            await tx.insert(platforms).values({
+                id: sys.id,
+                name: sys.name,
+                slug: sys.slug
+            }).onConflictDoNothing();
 
             // 2. Resolve Game ID
             let finalGameId = gameId;
@@ -47,7 +63,7 @@ importRouter.post("/", async (c) => {
                 if (existing) {
                     finalGameId = existing.id;
                 } else {
-                    finalGameId = generateId(`game:${slug}`);
+                    finalGameId = await generateId(`game:${slug}`);
                     await tx.insert(games).values({
                         id: finalGameId,
                         name: title,
@@ -60,16 +76,18 @@ importRouter.post("/", async (c) => {
                 }
             }
 
-            // 3. Create Rom
-            await tx.insert(roms).values({
-                 id: crypto.randomUUID(),
-                 gameId: finalGameId,
-                 systemId,
-                 filename: scannedFile.filename,
-                 path: scannedFile.path,
-                 size: scannedFile.size,
-                 region
-            });
+            // 3. Create Roms
+            for (const scannedFile of filesToImport) {
+                await tx.insert(roms).values({
+                     id: crypto.randomUUID(),
+                     gameId: finalGameId,
+                     systemId,
+                     filename: scannedFile.filename,
+                     path: scannedFile.path,
+                     size: scannedFile.size,
+                     region
+                });
+            }
 
             // 3.5 Ensure Game-Platform relation exists
             await tx.insert(gamePlatforms)
@@ -77,10 +95,12 @@ importRouter.post("/", async (c) => {
                 .onConflictDoNothing();
 
             // 4. Delete from Scanned Files
-            await tx.delete(scannedFiles).where(eq(scannedFiles.id, scannedFileId));
+            for (const fileId of fileIds) {
+                await tx.delete(scannedFiles).where(eq(scannedFiles.id, fileId));
+            }
         });
         
-        return c.json({ status: "success" });
+        return c.json({ status: "success", importedCount: fileIds.length });
     } catch (e) {
         console.error("Import failed", e);
         return c.json({ error: "Import failed" }, 500);

@@ -1,0 +1,1 @@
+ALTER TABLE `scanned_files` ADD `ignored` integer DEFAULT false NOT NULL;

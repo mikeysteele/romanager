@@ -5,12 +5,14 @@ import { Router } from '@lit-labs/router';
 // Import components to ensure they are registered
 import '../app-library/app-library.ts';
 import '../app-settings/app-settings.ts';
+import '../app-settings-roms/app-settings-roms.ts';
+import '../app-settings-platforms/app-settings-platforms.ts';
+import '../app-settings-file-types/app-settings-file-types.ts';
 import '../app-game-detail/app-game-detail.ts';
 import '../app-emulator/app-emulator.ts';
 import '../app-unmapped/app-unmapped.ts';
 import '../app-add-game/app-add-game.ts';
 import '../app-header/app-header.ts';
-import '../app-sidebar/app-sidebar.ts';
 import '../app-sidebar/app-sidebar.ts';
 
 @customElement('app-root')
@@ -87,6 +89,18 @@ export class AppRoot extends LitElement {
         render: () => html`<app-settings></app-settings> `
     },
     { 
+        path: '/settings/rom-management', 
+        render: () => html`<app-settings-roms></app-settings-roms> `
+    },
+    { 
+        path: '/settings/platforms', 
+        render: () => html`<app-settings-platforms></app-settings-platforms> `
+    },
+    { 
+        path: '/settings/file-types', 
+        render: () => html`<app-settings-file-types></app-settings-file-types> `
+    },
+    { 
         path: '/unmapped', 
         render: () => html`<app-unmapped></app-unmapped> `
     },
@@ -131,6 +145,7 @@ export class AppRoot extends LitElement {
   override render() {
 
     return html`
+      <ui-toast-container></ui-toast-container>
       <app-header></app-header>
       <main>
          <app-sidebar .currentPath=${location.pathname}></app-sidebar>

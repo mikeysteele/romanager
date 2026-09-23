@@ -1,61 +1,64 @@
+@import "open-props/style";
+@import "open-props/normalize";
+
 :root {
-  /* Color Palette - Premium Dark Theme */
-  --color-bg-primary: #0f0f15;
-  --color-bg-secondary: #18181b;
-  --color-bg-tertiary: #27272a;
+  /* Color Palette - Premium Dark Theme mapping to Open Props */
+  --color-bg-primary: #0f0f15; /* Custom brand deep dark background */
+  --color-bg-secondary: var(--stone-11);
+  --color-bg-tertiary: var(--stone-10);
   --color-bg-glass: rgba(24, 24, 27, 0.7);
   
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a1a1aa;
-  --color-text-tertiary: #71717a;
+  --color-text-primary: var(--stone-0);
+  --color-text-secondary: var(--stone-3);
+  --color-text-tertiary: var(--stone-5);
   --color-text-inverse: #000000;
 
-  /* Accents */
-  --color-accent-primary: #8b5cf6; /* Violet */
-  --color-accent-hover: #7c3aed;
+  /* Accents & States mapped to Open Props colors */
+  --color-accent-primary: var(--violet-6);
+  --color-accent-hover: var(--violet-7);
   --color-accent-glow: rgba(139, 92, 246, 0.5);
   
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
+  --color-success: var(--emerald-6);
+  --color-warning: var(--amber-6);
+  --color-error: var(--red-6);
 
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
+  /* Spacing mapped to Open Props scale */
+  --spacing-xs: var(--size-1);
+  --spacing-sm: var(--size-2);
+  --spacing-md: var(--size-4);
+  --spacing-lg: var(--size-6);
+  --spacing-xl: var(--size-7);
+  --spacing-2xl: var(--size-8);
 
-  /* Typography */
-  --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.5rem;
-  --font-size-2xl: 2rem;
-  --font-size-3xl: 3rem;
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-bold: 700;
+  /* Typography mapped to Open Props Font & Typography tokens */
+  --font-family-base: var(--font-sans);
+  --font-size-sm: var(--font-size-0);
+  --font-size-base: var(--font-size-1);
+  --font-size-lg: var(--font-size-2);
+  --font-size-xl: var(--font-size-4);
+  --font-size-2xl: var(--font-size-5);
+  --font-size-3xl: var(--font-size-7);
+  --font-weight-regular: var(--font-weight-4);
+  --font-weight-medium: var(--font-weight-5);
+  --font-weight-bold: var(--font-weight-7);
 
   /* Borders & Radius */
-  --border-radius-sm: 6px;
-  --border-radius-md: 12px;
-  --border-radius-lg: 16px;
-  --border-radius-full: 9999px;
+  --border-radius-sm: var(--radius-1);
+  --border-radius-md: var(--radius-2);
+  --border-radius-lg: var(--radius-3);
+  --border-radius-full: var(--radius-round);
   --border-color: rgba(255, 255, 255, 0.08);
   --border-color-hover: rgba(255, 255, 255, 0.15);
 
-  /* Effects */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  /* Effects & Shadows */
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
   --shadow-glow: 0 0 15px var(--color-accent-glow);
   
   --backdrop-blur: blur(12px);
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
+  --transition-fast: 150ms var(--ease-2);
+  --transition-normal: 250ms var(--ease-2);
 }
 
 *, *::before, *::after {

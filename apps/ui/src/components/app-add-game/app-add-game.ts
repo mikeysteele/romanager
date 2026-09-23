@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
+import { toast } from '@repo/ui-components';
 import '@repo/ui-components';
 
 import type { Game } from '@repo/shared';
@@ -89,11 +90,11 @@ export class AppAddGame extends LitElement {
             if (res.ok) {
                 this.success = true;
             } else {
-                alert('Failed to add game.');
+                toast('Failed to add game.', 'error');
             }
         } catch (e) {
             console.error('Error adding game', e);
-            alert('Error adding game.');
+            toast('Error adding game.', 'error');
         } finally {
             this.adding = false;
         }

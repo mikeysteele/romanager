@@ -72,14 +72,27 @@ export class UiDialog extends LitElement {
     @query('dialog')
     private dialogElement!: HTMLDialogElement;
 
-    @property({ type: Boolean }) open = false;
+    @property({ type: Boolean }) declare open: boolean;
+
+    constructor() {
+        super();
+        this.open = false;
+    }
 
     override updated(changedProperties: PropertyValues<this>) {
-        if (changedProperties.has('open')) {
+        if (changedProperties.has('open') && this.dialogElement) {
             if (this.open && !this.dialogElement.open) {
-                this.dialogElement.showModal();
+                if (typeof this.dialogElement.showModal === 'function') {
+                    this.dialogElement.showModal();
+                } else {
+                    this.dialogElement.open = true;
+                }
             } else if (!this.open && this.dialogElement.open) {
-                this.dialogElement.close();
+                if (typeof this.dialogElement.close === 'function') {
+                    this.dialogElement.close();
+                } else {
+                    this.dialogElement.open = false;
+                }
             }
         }
     }

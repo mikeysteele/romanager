@@ -22,7 +22,9 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    
+    fs: {
+      allow: ['../..'],
+    },
     proxy: {
      
       '/api/events': {

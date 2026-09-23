@@ -1,5 +1,5 @@
 import { db } from "./index.ts";
-import { games, roms, systems, settings, platforms, gamePlatforms } from "./schema.ts";
+import { games, roms, systems, settings, platforms, gamePlatforms, systemFirmware, fileTypeWhitelist } from "./schema.ts";
 import { eq, like, inArray, and } from "drizzle-orm";
 import { slugify } from "../utils.ts";
 import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
@@ -94,22 +94,39 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
     .leftJoin(systems, eq(roms.systemId, systems.id))
     .where(and(eq(roms.gameId, game.id), eq(roms.pendingDelete, false)));
     
-    // Map ROMs into their respective platforms
-    const platformsWithRoms = gamePlats.map(plat => {
+    // Map and deduplicate ROMs into their respective platforms by platform name
+    const uniquePlatformsMap = new Map<string, { id: string; name: string; slug: string; roms: (typeof roms.$inferSelect)[] }>();
+
+    for (const plat of gamePlats) {
+        const platKey = plat.name.toLowerCase().trim();
+        const existing = uniquePlatformsMap.get(platKey);
+
         const platformRoms = rawRoms
             .filter(r => {
+                if (r.rom.systemId === plat.id) return true;
                 const sysName = r.systemName?.toLowerCase() || "";
                 const platName = plat.name.toLowerCase();
-                return sysName.includes(platName) || platName.includes(sysName);
+                return sysName === platName || sysName.includes(platName) || platName.includes(sysName);
             })
             .map(r => r.rom);
 
-        return {
-            ...plat,
-            roms: platformRoms
-        };
-    });
+        if (existing) {
+            const seenRomIds = new Set(existing.roms.map(r => r.id));
+            for (const rom of platformRoms) {
+                if (!seenRomIds.has(rom.id)) {
+                    existing.roms.push(rom);
+                    seenRomIds.add(rom.id);
+                }
+            }
+        } else {
+            uniquePlatformsMap.set(platKey, {
+                ...plat,
+                roms: platformRoms
+            });
+        }
+    }
 
+    const platformsWithRoms = Array.from(uniquePlatformsMap.values());
     return { ...game, platforms: platformsWithRoms };
 }
 
@@ -148,7 +165,11 @@ export async function getSystems() {
 }
 
 export async function getSystemBySlug(slug: string) {
-    return await db.select().from(systems).where(eq(systems.slug, slug)).get();
+    const system = await db.select().from(systems).where(eq(systems.slug, slug)).get();
+    if (!system) return null;
+
+    const firmware = await db.select().from(systemFirmware).where(eq(systemFirmware.systemId, system.id));
+    return { ...system, firmware };
 }
 
 export async function getGamesBySystem(systemId: string) {
@@ -225,3 +246,79 @@ export async function getRomById(id: string) {
         system: system
     };
 }
+
+export const DEFAULT_FILE_TYPES = [
+  { extension: "nes", magicNumber: "4E45531A", description: "Nintendo Entertainment System ROM" },
+  { extension: "sfc", magicNumber: null, description: "Super Nintendo ROM" },
+  { extension: "smc", magicNumber: null, description: "Super Nintendo ROM" },
+  { extension: "gb", magicNumber: null, description: "Game Boy ROM" },
+  { extension: "gbc", magicNumber: null, description: "Game Boy Color ROM" },
+  { extension: "gba", magicNumber: null, description: "Game Boy Advance ROM" },
+  { extension: "n64", magicNumber: null, description: "Nintendo 64 ROM" },
+  { extension: "z64", magicNumber: null, description: "Nintendo 64 ROM" },
+  { extension: "v64", magicNumber: null, description: "Nintendo 64 ROM" },
+  { extension: "md", magicNumber: null, description: "Sega Genesis / Mega Drive ROM" },
+  { extension: "gen", magicNumber: null, description: "Sega Genesis ROM" },
+  { extension: "smd", magicNumber: null, description: "Sega Genesis ROM" },
+  { extension: "bin", magicNumber: null, description: "Binary ROM / BIOS" },
+  { extension: "iso", magicNumber: null, description: "Disc Image" },
+  { extension: "cue", magicNumber: null, description: "Cue Sheet" },
+  { extension: "chd", magicNumber: null, description: "Compressed Hunks of Data (CHD)" },
+  { extension: "pbp", magicNumber: null, description: "PlayStation Portable / PS1 Eboot" },
+  { extension: "rom", magicNumber: null, description: "Generic BIOS / ROM" },
+  { extension: "bios", magicNumber: null, description: "Generic BIOS" },
+];
+
+export async function getFileTypeWhitelist() {
+  return await db.select().from(fileTypeWhitelist);
+}
+
+export async function seedDefaultFileTypeWhitelist() {
+  const existing = await db.select().from(fileTypeWhitelist);
+  if (existing.length === 0) {
+    for (const item of DEFAULT_FILE_TYPES) {
+      await db.insert(fileTypeWhitelist).values({
+        id: crypto.randomUUID(),
+        extension: item.extension.toLowerCase(),
+        magicNumber: item.magicNumber || null,
+        description: item.description,
+        enabled: true,
+      });
+    }
+  }
+}
+
+export async function upsertFileTypeWhitelistEntry(data: {
+  id?: string;
+  extension: string;
+  magicNumber?: string | null;
+  description?: string | null;
+  enabled?: boolean;
+}) {
+  const id = data.id || crypto.randomUUID();
+  const extension = data.extension.trim().toLowerCase().replace(/^\./, '');
+  const magicNumber = data.magicNumber ? data.magicNumber.trim().toUpperCase() : null;
+  const description = data.description ? data.description.trim() : null;
+  const enabled = data.enabled !== undefined ? data.enabled : true;
+
+  return await db.insert(fileTypeWhitelist).values({
+    id,
+    extension,
+    magicNumber,
+    description,
+    enabled,
+  }).onConflictDoUpdate({
+    target: fileTypeWhitelist.id,
+    set: {
+      extension,
+      magicNumber,
+      description,
+      enabled,
+    }
+  }).returning();
+}
+
+export async function deleteFileTypeWhitelistEntry(id: string) {
+  return await db.delete(fileTypeWhitelist).where(eq(fileTypeWhitelist.id, id));
+}
+

@@ -96,11 +96,19 @@ export class UiButton extends LitElement {
         }
     `;
 
-    @property({ type: String }) variant: ButtonVariant = 'primary';
-    @property({ type: String }) size: ButtonSize = 'md';
-    @property({ type: Boolean }) disabled = false;
-    @property({ type: String }) type: 'button' | 'submit' | 'reset' = 'button';
-    @property({ type: String }) href?: string;
+    @property({ type: String }) declare variant: ButtonVariant;
+    @property({ type: String }) declare size: ButtonSize;
+    @property({ type: Boolean }) declare disabled: boolean;
+    @property({ type: String }) declare type: 'button' | 'submit' | 'reset';
+    @property({ type: String }) declare href?: string;
+
+    constructor() {
+        super();
+        this.variant = 'primary';
+        this.size = 'md';
+        this.disabled = false;
+        this.type = 'button';
+    }
 
     private clickHandler(e: Event) {
         if (this.type === 'submit') {

@@ -33,7 +33,17 @@ export class AppSidebar extends LitElement {
     },
             { id: 'activity', title: 'Activity', href: '#' },
             { id: 'logs', title: 'Logs', href: '#' },
-                 { id: 'settings', title: 'Settings', href: '/settings' },
+    {
+        id: 'settings',
+        title: 'Settings',
+        href: '/settings',
+        expanded: location.pathname.startsWith('/settings'),
+        children: [
+            { id: 'settings-roms', title: 'ROM Management', href: '/settings/rom-management' },
+            { id: 'settings-platforms', title: 'Platforms', href: '/settings/platforms' },
+            { id: 'settings-file-types', title: 'File Types', href: '/settings/file-types' }
+        ]
+    }
 
   ];
 
@@ -176,21 +186,19 @@ export class AppSidebar extends LitElement {
         .filter(sib => sib.children && sib.children.length > 0)
         .map(sib => sib.id);
 
-      const handleToggle = (e: Event) => {
-          e.preventDefault();
-          e.stopPropagation();
+      const handleToggle = () => {
           this.toggle(item.id, siblingIds);
       };
 
       return html`
         <div class="nav-item">
             ${hasChildren ? html`
-                <div class="nav-link parent ${active ? 'active' : ''}">
-                    <span class="toggle ${expanded ? 'expanded' : ''}" @click=${handleToggle}>▶</span>
+                <div class="nav-link parent ${active ? 'active' : ''}" @click=${handleToggle}>
+                    <span class="toggle ${expanded ? 'expanded' : ''}" >▶</span>
                     ${item.href ? html`
                         <a href="${item.href}" class="parent-link">${item.title}</a>
                     ` : html`
-                        <span @click=${handleToggle} style="flex:1; cursor: pointer;">${item.title}</span>
+                        <span style="flex:1; cursor: pointer;">${item.title}</span>
                     `}
                 </div>
                 ${expanded ? html`
