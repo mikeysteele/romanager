@@ -1,4 +1,4 @@
-CREATE TABLE `file_type_whitelist` (
+CREATE TABLE IF NOT EXISTS `file_type_whitelist` (
 	`id` text PRIMARY KEY NOT NULL,
 	`extension` text NOT NULL,
 	`magic_number` text,
@@ -83,7 +83,7 @@ CREATE TABLE `__new_roms` (
 	FOREIGN KEY (`system_id`) REFERENCES `systems`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-INSERT INTO `__new_roms`("id", "game_id", "system_id", "name", "set_type", "base_path", "launch_file", "filename", "path", "size", "total_size", "set_hash", "status", "region", "crc32", "md5", "sha1", "created_at", "updated_at", "pending_delete") SELECT "id", "game_id", "system_id", "name", "set_type", "base_path", "launch_file", "filename", "path", "size", "total_size", "set_hash", "status", "region", "crc32", "md5", "sha1", "created_at", "updated_at", "pending_delete" FROM `roms`;--> statement-breakpoint
+INSERT INTO `__new_roms`("id", "game_id", "system_id", "filename", "path", "size", "total_size", "region", "crc32", "md5", "created_at", "updated_at", "pending_delete") SELECT "id", "game_id", "system_id", "filename", "path", "size", "size", "region", "crc32", "md5", "created_at", "created_at", "pending_delete" FROM `roms`;--> statement-breakpoint
 DROP TABLE `roms`;--> statement-breakpoint
 ALTER TABLE `__new_roms` RENAME TO `roms`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;--> statement-breakpoint
