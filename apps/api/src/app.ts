@@ -17,6 +17,9 @@ import { unmappedRouter } from "./routes/unmapped.ts";
 import { firmwareRouter } from "./routes/firmware.ts";
 import { fileTypesRouter } from "./routes/fileTypes.ts";
 import { filesystemRouter } from "./routes/filesystem.ts";
+import { devicesRouter } from "./routes/devices.ts";
+import { syncRouter } from "./routes/sync.ts";
+import { keysRouter } from "./routes/keys.ts";
 
 export default function createServer(romsDir: string, appDir: string) {
     const app = new Hono();
@@ -51,6 +54,9 @@ export default function createServer(romsDir: string, appDir: string) {
     app.route("/api/firmware", firmwareRouter);
     app.route("/api/file-types", fileTypesRouter);
     app.route("/api/filesystem", filesystemRouter);
+    app.route("/api/devices", devicesRouter);
+    app.route("/api/sync", syncRouter);
+    app.route("/api/keys", keysRouter);
 
 
     // Serve frontend
