@@ -40,6 +40,7 @@ export default function createServer(romsDir: string, appDir: string) {
     app.route("/api/events", eventsRouter);
     app.route("/api/games", gamesRouter);
     app.route("/api/systems", systemsRouter);
+    app.route("/api/platforms", systemsRouter);
     app.route("/api/roms", romsRouter);
     app.route("/api/scans", createScansRouter(worker, romsDir));
     app.route("/api/scan", createScansRouter(worker, romsDir)); // The POST runs here too

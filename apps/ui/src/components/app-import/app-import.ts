@@ -571,6 +571,9 @@ export class AppImport extends LitElement {
                     : 'Game imported successfully';
                 toast(countMsg, 'success');
                 this.dispatchEvent(new CustomEvent('import-complete', { bubbles: true, composed: true }));
+                globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
+                globalThis.dispatchEvent(new CustomEvent('systems-updated'));
+                globalThis.dispatchEvent(new CustomEvent('roms-updated'));
                 this.closeModal();
             } else {
                 const error = await res.json();

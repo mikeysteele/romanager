@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.ts";
 import { games, scannedFiles, roms, systems, platforms, gamePlatforms } from "../db/schema.ts";
 import { generateId, slugify } from "../utils.ts";
+import { eventBus } from "../sse.ts";
 
 export const importRouter = new Hono();
 
@@ -104,6 +105,27 @@ importRouter.post("/", async (c) => {
             }
         });
         
+        eventBus.emit('sse-message', {
+            type: 'done',
+            action: 'roms-updated'
+        });
+        if (sysToInsert) {
+            eventBus.emit('sse-message', {
+                type: 'done',
+                action: 'platforms-updated',
+                id: sysToInsert.id,
+                slug: sysToInsert.slug,
+                name: sysToInsert.name
+            });
+            eventBus.emit('sse-message', {
+                type: 'done',
+                action: 'platform-created',
+                id: sysToInsert.id,
+                slug: sysToInsert.slug,
+                name: sysToInsert.name
+            });
+        }
+
         return c.json({ status: "success", importedCount: fileIds.length });
     } catch (e) {
         console.error("Import failed", e);

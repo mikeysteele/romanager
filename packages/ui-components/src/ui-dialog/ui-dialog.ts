@@ -73,10 +73,12 @@ export class UiDialog extends LitElement {
     private dialogElement!: HTMLDialogElement;
 
     @property({ type: Boolean }) declare open: boolean;
+    @property({ type: String }) declare heading: string;
 
     constructor() {
         super();
         this.open = false;
+        this.heading = '';
     }
 
     override updated(changedProperties: PropertyValues<this>) {
@@ -114,14 +116,15 @@ export class UiDialog extends LitElement {
             <dialog @click=${this.handleBackdropClick} @close=${this.handleClose}>
                 <div class="container">
                     <div class="header">
-                        <slot name="header"></slot>
+                        <slot name="header">${this.heading ? html`<h2>${this.heading}</h2>` : ''}</slot>
                     </div>
                     <div class="content">
                         <slot></slot>
                     </div>
-                    <!-- Actions slot for buttons -->
+                    <!-- Actions slot for buttons (supports both name="actions" and name="footer") -->
                     <div class="actions">
                         <slot name="actions"></slot>
+                        <slot name="footer"></slot>
                     </div>
                 </div>
             </dialog>

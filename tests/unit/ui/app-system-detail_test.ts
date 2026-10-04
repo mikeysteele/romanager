@@ -33,7 +33,7 @@ Deno.test("AppSystemDetail: fetches system and games by slug", async () => {
     el.requestUpdate();
     await el.updateComplete;
 
-    assertEquals(fetchedUrl, "/api/systems/snes");
+    assertEquals(fetchedUrl, "/api/platforms/snes");
     assertEquals(el.system?.name, "Super Nintendo");
     assertEquals(el.games.length, 2);
 

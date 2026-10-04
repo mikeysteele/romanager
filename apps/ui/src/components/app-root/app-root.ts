@@ -107,8 +107,12 @@ export class AppRoot extends LitElement {
         render: () => html`<app-unmapped></app-unmapped> `
     },
     { 
+        path: '/platform/:platformSlug', 
+        render: ({ platformSlug }) => html`<app-system-detail platformSlug="${platformSlug}"></app-system-detail> `
+    },
+    { 
         path: '/system/:systemSlug', 
-        render: ({ systemSlug }) => html`<app-system-detail systemSlug="${systemSlug}"></app-system-detail> `
+        render: ({ systemSlug }) => html`<app-system-detail platformSlug="${systemSlug}"></app-system-detail> `
     },
     { 
         path: '/game/:gameSlug', 
@@ -165,6 +169,18 @@ export class AppRoot extends LitElement {
             globalThis.dispatchEvent(new CustomEvent('scan-progress', { detail: data }));
           } else if (data.type === 'done') {
             if (data.action === 'rom-deleted' || data.action === 'game-deleted') {
+              globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+            } else if (
+              data.action === 'system-deleted' || 
+              data.action === 'system-created' || 
+              data.action === 'platform-deleted' || 
+              data.action === 'platform-created' ||
+              data.action === 'platforms-updated' ||
+              data.action === 'systems-updated' ||
+              data.action === 'game-added'
+            ) {
+              globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
+              globalThis.dispatchEvent(new CustomEvent('systems-updated'));
               globalThis.dispatchEvent(new CustomEvent('roms-updated'));
             } else {
               const count = typeof data.count === 'number' ? data.count : 0;

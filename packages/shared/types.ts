@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-export const SystemSchema = z.object({
+export const PlatformSchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
-  path: z.string().nullable(),
+  path: z.string().nullable().optional(),
 });
-export type System = z.infer<typeof SystemSchema>;
+export type Platform = z.infer<typeof PlatformSchema>;
 
 export const SystemFirmwareSchema = z.object({
   id: z.string(),
@@ -19,18 +19,6 @@ export const SystemFirmwareSchema = z.object({
   createdAt: z.string().optional(),
 });
 export type SystemFirmware = z.infer<typeof SystemFirmwareSchema>;
-
-export const SystemReadSchema = SystemSchema.extend({
-    firmware: z.array(SystemFirmwareSchema).optional()
-});
-export type SystemRead = z.infer<typeof SystemReadSchema>;
-
-export const PlatformSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    slug: z.string(),
-});
-export type Platform = z.infer<typeof PlatformSchema>;
 
 export const RomSchema = z.object({
   id: z.string(),
@@ -48,9 +36,17 @@ export const RomSchema = z.object({
 export type Rom = z.infer<typeof RomSchema>;
 
 export const PlatformReadSchema = PlatformSchema.extend({
-    roms: z.array(RomSchema).optional()
+  firmware: z.array(SystemFirmwareSchema).optional(),
+  romCount: z.number().optional(),
+  roms: z.array(RomSchema).optional(),
 });
 export type PlatformRead = z.infer<typeof PlatformReadSchema>;
+
+// Unified aliases for backward compatibility
+export const SystemSchema = PlatformSchema;
+export type System = Platform;
+export const SystemReadSchema = PlatformReadSchema;
+export type SystemRead = PlatformRead;
 
 export const GameSchema = z.object({
   id: z.string(),

@@ -1,10 +1,11 @@
 import { Hono } from "@hono/hono";
 import { getGames, getGamesBySystem, getGameById, getGameBySlug, searchLocalGames, deleteGameFromDb } from "../db/queries.ts";
 import { db } from "../db/index.ts";
-import { games, platforms, gamePlatforms } from "../db/schema.ts";
+import { games, platforms, gamePlatforms, systems } from "../db/schema.ts";
 import { generateId, slugify } from "../utils.ts";
 import { GameSchema} from "@repo/shared";
 import { getDeletionWorker } from "../worker.ts";
+import { eventBus } from "../sse.ts";
 
 export const gamesRouter = new Hono();
 
@@ -68,7 +69,15 @@ gamesRouter.delete("/:id", async (c) => {
         }
 
         // Broadcast early optimistic update to sync clients
-        globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        eventBus.emit('sse-message', {
+            type: 'done',
+            action: 'game-deleted',
+            id: id
+        });
+        eventBus.emit('sse-message', {
+            type: 'done',
+            action: 'roms-updated'
+        });
 
         return c.json({ success: true, message: `Game ${id} deleted.` }, 202);
     } catch (e) {
@@ -113,6 +122,7 @@ gamesRouter.post("/add", async (c) => {
         });
 
         // 2. Upsert Platforms & Relations
+        let hasNewPlatforms = false;
         if (gameData.platforms && gameData.platforms.length > 0) {
             for (const plat of gameData.platforms) {
                 // Upsert Platform
@@ -120,15 +130,41 @@ gamesRouter.post("/add", async (c) => {
                     .values({ id: plat.id, name: plat.name, slug: plat.slug })
                     .onConflictDoUpdate({ target: platforms.slug, set: { name: plat.name } });
 
+                // Synchronize with systems table so both tables match
+                await db.insert(systems)
+                    .values({ id: plat.id, name: plat.name, slug: plat.slug, path: null })
+                    .onConflictDoUpdate({ target: systems.slug, set: { name: plat.name } });
+
                 // Insert Relation (ignore if exists)
                 await db.insert(gamePlatforms)
                     .values({ gameId: id, platformId: plat.id })
                     .onConflictDoNothing();
+
+                hasNewPlatforms = true;
             }
         }
 
-        // Broadcast update
-        globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        // Broadcast SSE updates to all connected clients
+        eventBus.emit('sse-message', {
+            type: 'done',
+            action: 'game-added',
+            id
+        });
+        eventBus.emit('sse-message', {
+            type: 'done',
+            action: 'roms-updated'
+        });
+
+        if (hasNewPlatforms) {
+            eventBus.emit('sse-message', {
+                type: 'done',
+                action: 'platforms-updated'
+            });
+            eventBus.emit('sse-message', {
+                type: 'done',
+                action: 'systems-updated'
+            });
+        }
 
         return c.json({ status: "success", id });
     } catch (e) {

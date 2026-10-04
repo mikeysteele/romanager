@@ -122,7 +122,13 @@ export class AppSystemDetail extends LitElement {
     }
   `;
 
+  @property({ type: String }) platformSlug: string = '';
   @property({ type: String }) systemSlug: string = '';
+
+  get currentSlug(): string {
+    return this.platformSlug || this.systemSlug;
+  }
+
   @state() system: SystemDetail | null = null;
   @state() games: GameRead[] = [];
   @state() loading: boolean = false;
@@ -141,7 +147,7 @@ export class AppSystemDetail extends LitElement {
   }
 
   override willUpdate(changedProperties: Map<string, unknown>) {
-    if (changedProperties.has('systemSlug') && this.systemSlug) {
+    if ((changedProperties.has('platformSlug') || changedProperties.has('systemSlug')) && this.currentSlug) {
       this.fetchSystemData();
     }
   }
@@ -151,16 +157,17 @@ export class AppSystemDetail extends LitElement {
   };
 
   async fetchSystemData() {
-    if (!this.systemSlug) return;
+    const slug = this.currentSlug;
+    if (!slug) return;
     try {
       this.loading = true;
       this.error = null;
-      const res = await fetch(`/api/systems/${encodeURIComponent(this.systemSlug)}`);
+      const res = await fetch(`/api/platforms/${encodeURIComponent(slug)}`);
       if (!res.ok) {
         if (res.status === 404) {
-          this.error = `System "${this.systemSlug}" not found.`;
+          this.error = `Platform "${slug}" not found.`;
         } else {
-          this.error = `Failed to load system details (${res.status})`;
+          this.error = `Failed to load platform details (${res.status})`;
         }
         this.system = null;
         this.games = [];
@@ -170,8 +177,8 @@ export class AppSystemDetail extends LitElement {
       this.system = data;
       this.games = Array.isArray(data.games) ? data.games : [];
     } catch (e) {
-      console.error('Error fetching system detail:', e);
-      this.error = 'Network error while fetching system data.';
+      console.error('Error fetching platform detail:', e);
+      this.error = 'Network error while fetching platform data.';
     } finally {
       this.loading = false;
     }
@@ -194,12 +201,12 @@ export class AppSystemDetail extends LitElement {
         <div class="breadcrumb">
           <a href="/">Library</a>
           <span>/</span>
-          <span>Systems</span>
+          <span>Platforms</span>
           <span>/</span>
-          <span>${this.system?.name || this.systemSlug}</span>
+          <span>${this.system?.name || this.currentSlug}</span>
         </div>
 
-        ${when(this.loading, () => html`<div class="loading">Loading system library...</div>`)}
+        ${when(this.loading, () => html`<div class="loading">Loading platform library...</div>`)}
 
         ${when(this.error, () => html`
           <div class="error-state">
@@ -231,8 +238,8 @@ export class AppSystemDetail extends LitElement {
           <div class="games-view">
             ${this.filteredGames.length === 0 ? html`
               <div class="empty-state">
-                <p>No games found in this system collection.</p>
-                <p><a href="/add">Scan or import ROMs</a> to populate this system.</p>
+                <p>No games found in this platform collection.</p>
+                <p><a href="/add">Scan or import ROMs</a> to populate this platform.</p>
               </div>
             ` : html`
               <app-game-list .games=${this.filteredGames}></app-game-list>

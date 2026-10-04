@@ -14,38 +14,57 @@ interface NavItem {
 export class AppSidebar extends LitElement {
   @property() currentPath: string = '/';
   
-  // Internal state to track expanded items by ID
-  @state() expandedItems = new Set<string>(['games']);
+  // Internal state to track expanded items by ID ('games' and 'platforms' open by default)
+  @state() expandedItems = new Set<string>(['games', 'platforms']);
 
-  @state() systems: Array<{ id: string; name: string; slug: string }> = [];
+  @state() platforms: Array<{ id: string; name: string; slug: string }> = [];
+
+  // Alias for backward compatibility
+  get systems() { return this.platforms; }
+  set systems(val) { this.platforms = val; }
 
   override connectedCallback() {
     super.connectedCallback();
-    this.fetchSystems();
-    globalThis.addEventListener('roms-updated', this.handleRomsUpdated);
+    this.fetchPlatforms();
+    globalThis.addEventListener('roms-updated', this.handlePlatformsUpdated);
+    globalThis.addEventListener('platforms-updated', this.handlePlatformsUpdated);
+    globalThis.addEventListener('systems-updated', this.handlePlatformsUpdated);
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    globalThis.removeEventListener('roms-updated', this.handleRomsUpdated);
+    globalThis.removeEventListener('roms-updated', this.handlePlatformsUpdated);
+    globalThis.removeEventListener('platforms-updated', this.handlePlatformsUpdated);
+    globalThis.removeEventListener('systems-updated', this.handlePlatformsUpdated);
   }
 
-  handleRomsUpdated = () => {
-    this.fetchSystems();
+  handlePlatformsUpdated = async () => {
+    await this.fetchPlatforms();
+    const next = new Set(this.expandedItems);
+    next.add('platforms');
+    this.expandedItems = next;
+    this.requestUpdate();
   };
 
-  async fetchSystems() {
+  handleRomsUpdated = this.handlePlatformsUpdated;
+
+  async fetchPlatforms() {
     try {
-      const res = await fetch('/api/systems');
+      const res = await fetch('/api/platforms');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          this.systems = data;
+          this.platforms = [...data];
+          this.requestUpdate();
         }
       }
     } catch {
       // Ignored during test or offline
     }
+  }
+
+  async fetchSystems() {
+    return this.fetchPlatforms();
   }
 
   get computedNavItems(): NavItem[] {
@@ -63,16 +82,16 @@ export class AppSidebar extends LitElement {
       }
     ];
 
-    if (this.systems.length > 0) {
+    if (this.platforms.length > 0) {
       items.push({
-        id: 'systems',
-        title: 'Systems',
-        href: '#systems',
-        expanded: typeof globalThis.location !== 'undefined' ? globalThis.location?.pathname?.startsWith('/system') : false,
-        children: this.systems.map(s => ({
-          id: `system-${s.slug}`,
-          title: s.name,
-          href: `/system/${s.slug}`
+        id: 'platforms',
+        title: 'Platforms',
+        href: '#platforms',
+        expanded: true,
+        children: this.platforms.map(p => ({
+          id: `platform-${p.slug}`,
+          title: p.name,
+          href: `/platform/${p.slug}`
         }))
       });
     }
@@ -232,7 +251,7 @@ export class AppSidebar extends LitElement {
         .map(sib => sib.id);
 
       const handleToggle = () => {
-          this.toggle(item.id, siblingIds);
+          this.toggle(item.id, []);
       };
 
       return html`

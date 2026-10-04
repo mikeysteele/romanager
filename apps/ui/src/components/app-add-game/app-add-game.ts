@@ -89,6 +89,9 @@ export class AppAddGame extends LitElement {
             
             if (res.ok) {
                 this.success = true;
+                globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
+                globalThis.dispatchEvent(new CustomEvent('systems-updated'));
+                globalThis.dispatchEvent(new CustomEvent('roms-updated'));
             } else {
                 toast('Failed to add game.', 'error');
             }

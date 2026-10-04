@@ -1,6 +1,6 @@
 import { db } from "./index.ts";
 import { games, roms, systems, settings, platforms, gamePlatforms, systemFirmware, fileTypeWhitelist } from "./schema.ts";
-import { eq, like, inArray, and } from "drizzle-orm";
+import { eq, like, inArray, and, or, sql } from "drizzle-orm";
 import { slugify } from "../utils.ts";
 import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 
@@ -168,7 +168,38 @@ export async function deleteGameFromDb(id: string) {
 }
 
 export async function getSystems() {
-  return await db.select().from(systems);
+  const allSystems = await db.select().from(systems);
+  if (allSystems.length === 0) return [];
+
+  // Get active ROM counts grouped by systemId
+  const romCounts = await db.select({
+    systemId: roms.systemId,
+    count: sql<number>`count(${roms.id})`.mapWith(Number)
+  })
+  .from(roms)
+  .where(eq(roms.pendingDelete, false))
+  .groupBy(roms.systemId);
+
+  const countMap = new Map<string, number>();
+  for (const rc of romCounts) {
+    if (rc.systemId) {
+      countMap.set(rc.systemId, rc.count);
+    }
+  }
+
+  const allFirmware = await db.select().from(systemFirmware);
+  const firmwareMap = new Map<string, typeof allFirmware>();
+  for (const fw of allFirmware) {
+    const list = firmwareMap.get(fw.systemId) || [];
+    list.push(fw);
+    firmwareMap.set(fw.systemId, list);
+  }
+
+  return allSystems.map(sys => ({
+    ...sys,
+    firmware: firmwareMap.get(sys.id) || [],
+    romCount: countMap.get(sys.id) || 0,
+  }));
 }
 
 export async function getSystemBySlug(slug: string) {
@@ -176,7 +207,40 @@ export async function getSystemBySlug(slug: string) {
     if (!system) return null;
 
     const firmware = await db.select().from(systemFirmware).where(eq(systemFirmware.systemId, system.id));
-    return { ...system, firmware };
+    const activeRoms = await db.select({ count: sql<number>`count(${roms.id})`.mapWith(Number) })
+      .from(roms)
+      .where(and(eq(roms.systemId, system.id), eq(roms.pendingDelete, false)))
+      .get();
+
+    return { 
+      ...system, 
+      firmware,
+      romCount: activeRoms?.count || 0,
+    };
+}
+
+export async function deleteSystem(idOrSlug: string) {
+  const system = await db.select().from(systems)
+    .where(or(eq(systems.id, idOrSlug), eq(systems.slug, idOrSlug)))
+    .get();
+  if (!system) return null;
+
+  const activeRoms = await db.select({ id: roms.id })
+    .from(roms)
+    .where(and(eq(roms.systemId, system.id), eq(roms.pendingDelete, false)))
+    .limit(1);
+
+  if (activeRoms.length > 0) {
+    throw new Error("Cannot delete system that has active ROMs assigned to it.");
+  }
+
+  // Clean up any pendingDelete roms referencing this system to preserve FK constraints
+  await db.delete(roms).where(eq(roms.systemId, system.id));
+  // Clean up any associated system firmware
+  await db.delete(systemFirmware).where(eq(systemFirmware.systemId, system.id));
+  // Delete the system record
+  await db.delete(systems).where(eq(systems.id, system.id));
+  return system;
 }
 
 export async function getGamesBySystem(systemId: string) {
