@@ -1,6 +1,6 @@
-# Companion CLI — `romanager-sync` (Draft Spec)
+# Companion CLI — `romanager-sync`
 
-> Status: **DRAFT v0.3** — for discussion. Nothing here is implemented yet.
+> Status: **IMPLEMENTED (v1.0)** — Fully implemented in `apps/cli`, `apps/api`, and `apps/ui`.
 >
 > **v0.3 changes:** UI/WebDAV auth is out of scope (self-hosted only). The device mirrors the server's folder
 > structure exactly. Arcade dependency sets are scheduled for **v1.1** (§12), and v1 ships a forward-compatible
