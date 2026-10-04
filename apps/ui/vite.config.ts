@@ -28,7 +28,7 @@ export default defineConfig({
     proxy: {
      
       '/api/events': {
-        target: 'http://localhost:8000/api/events',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on("proxyRes", (proxyRes, _req, res) => {

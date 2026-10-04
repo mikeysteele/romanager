@@ -210,6 +210,56 @@ export class AppSettingsRoms extends LitElement {
     .tip-link:hover {
         text-decoration: underline;
     }
+
+    .scan-live-container {
+        margin-top: var(--spacing-md, 12px);
+        padding: 12px 16px;
+        background: rgba(245, 197, 24, 0.08);
+        border: 1px solid rgba(245, 197, 24, 0.25);
+        border-radius: var(--border-radius-md, 8px);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .scan-live-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: var(--color-accent-primary, #f5c518);
+    }
+
+    .scan-live-spinner {
+        display: inline-block;
+        animation: spin-icon 1.5s linear infinite;
+    }
+
+    @keyframes spin-icon {
+        100% { transform: rotate(360deg); }
+    }
+
+    .scan-live-count {
+        margin-left: auto;
+        font-weight: 700;
+        background: rgba(245, 197, 24, 0.2);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+    }
+
+    .scan-live-file {
+        font-size: 0.8rem;
+        color: var(--color-text-secondary, #aaa);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .scan-live-file code {
+        color: var(--color-text-primary, #fff);
+        font-family: monospace;
+    }
   `;
 
   @state() declare loading: boolean;
@@ -218,6 +268,8 @@ export class AppSettingsRoms extends LitElement {
   @state() declare isClearing: boolean;
   @state() declare isScanning: boolean;
   @state() declare isBrowserOpen: boolean;
+  @state() scanCount: number = 0;
+  @state() currentScanFile: string = '';
 
   constructor() {
     super();
@@ -227,6 +279,8 @@ export class AppSettingsRoms extends LitElement {
     this.isClearing = false;
     this.isScanning = false;
     this.isBrowserOpen = false;
+    this.scanCount = 0;
+    this.currentScanFile = '';
   }
 
   override connectedCallback() {
@@ -234,12 +288,41 @@ export class AppSettingsRoms extends LitElement {
       this.fetchSettings();
       this.fetchUnmappedCount();
       globalThis.addEventListener('roms-updated', this.handleRomsUpdated);
+      globalThis.addEventListener('scan-started', this.handleScanStarted);
+      globalThis.addEventListener('scan-progress', this.handleScanProgress as EventListener);
+      globalThis.addEventListener('scan-done', this.handleScanDone as EventListener);
+      globalThis.addEventListener('scan-error', this.handleScanError as EventListener);
   }
 
   override disconnectedCallback() {
       super.disconnectedCallback();
       globalThis.removeEventListener('roms-updated', this.handleRomsUpdated);
+      globalThis.removeEventListener('scan-started', this.handleScanStarted);
+      globalThis.removeEventListener('scan-progress', this.handleScanProgress as EventListener);
+      globalThis.removeEventListener('scan-done', this.handleScanDone as EventListener);
+      globalThis.removeEventListener('scan-error', this.handleScanError as EventListener);
   }
+
+  handleScanStarted = () => {
+      this.isScanning = true;
+      this.scanCount = 0;
+      this.currentScanFile = '';
+  };
+
+  handleScanProgress = (e: CustomEvent<{ count?: number; currentFile?: string }>) => {
+      this.isScanning = true;
+      if (typeof e.detail?.count === 'number') this.scanCount = e.detail.count;
+      if (e.detail?.currentFile) this.currentScanFile = e.detail.currentFile;
+  };
+
+  handleScanDone = () => {
+      this.isScanning = false;
+      this.fetchUnmappedCount();
+  };
+
+  handleScanError = () => {
+      this.isScanning = false;
+  };
 
   handleRomsUpdated = () => {
       this.fetchUnmappedCount();
@@ -319,21 +402,23 @@ export class AppSettingsRoms extends LitElement {
   async triggerScan() {
     try {
       this.isScanning = true;
+      this.scanCount = 0;
+      this.currentScanFile = '';
       const res = await fetch('/api/scans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: this.romsDir || undefined }),
       });
       if (res.ok) {
-        toast('Library scan started in background', 'success');
+        toast('Library scan started in background', 'info');
       } else {
+        this.isScanning = false;
         toast('Failed to start scan', 'error');
       }
     } catch (err) {
+      this.isScanning = false;
       console.error('Failed to trigger scan', err);
       toast('Failed to start scan', 'error');
-    } finally {
-      this.isScanning = false;
     }
   }
 
@@ -394,6 +479,21 @@ export class AppSettingsRoms extends LitElement {
                             ${this.isScanning ? 'Scanning...' : 'Scan Now'}
                         </ui-button>
                     </div>
+
+                    ${this.isScanning ? html`
+                      <div class="scan-live-container">
+                        <div class="scan-live-header">
+                          <span class="scan-live-spinner">⏳</span>
+                          <strong>Scanning library in background...</strong>
+                          <span class="scan-live-count">${this.scanCount} files discovered</span>
+                        </div>
+                        ${this.currentScanFile ? html`
+                          <div class="scan-live-file" title="${this.currentScanFile}">
+                            Current: <code>${this.currentScanFile}</code>
+                          </div>
+                        ` : ''}
+                      </div>
+                    ` : ''}
                 </form>
             </div>
 

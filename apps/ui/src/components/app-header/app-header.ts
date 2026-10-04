@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 
 @customElement('app-header')
 export class AppHeader extends LitElement {
@@ -116,9 +116,77 @@ export class AppHeader extends LitElement {
         background: rgba(245, 197, 24, 0.25);
         color: #fff;
     }
+
+    .scan-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        background: rgba(245, 197, 24, 0.15);
+        color: var(--color-accent-primary, #f5c518);
+        border: 1px solid rgba(245, 197, 24, 0.4);
+        font-size: 0.8rem;
+        font-weight: 600;
+        animation: pulse-glow 2s infinite ease-in-out;
+        cursor: default;
+    }
+
+    .scan-icon-spin {
+        display: inline-block;
+        animation: spin-icon 1.5s linear infinite;
+    }
+
+    @keyframes spin-icon {
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse-glow {
+        0%, 100% { opacity: 1; border-color: rgba(245, 197, 24, 0.4); }
+        50% { opacity: 0.75; border-color: rgba(245, 197, 24, 0.8); }
+    }
   `;
 
   searchQuery = '';
+  @state() isScanning: boolean = false;
+  @state() scanCount: number = 0;
+  @state() currentScanFile: string = '';
+
+  override connectedCallback() {
+    super.connectedCallback();
+    globalThis.addEventListener('scan-started', this.handleScanStarted);
+    globalThis.addEventListener('scan-progress', this.handleScanProgress as EventListener);
+    globalThis.addEventListener('scan-done', this.handleScanDone as EventListener);
+    globalThis.addEventListener('scan-error', this.handleScanError as EventListener);
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    globalThis.removeEventListener('scan-started', this.handleScanStarted);
+    globalThis.removeEventListener('scan-progress', this.handleScanProgress as EventListener);
+    globalThis.removeEventListener('scan-done', this.handleScanDone as EventListener);
+    globalThis.removeEventListener('scan-error', this.handleScanError as EventListener);
+  }
+
+  handleScanStarted = () => {
+    this.isScanning = true;
+    this.scanCount = 0;
+    this.currentScanFile = '';
+  };
+
+  handleScanProgress = (e: CustomEvent<{ count?: number; currentFile?: string }>) => {
+    this.isScanning = true;
+    if (typeof e.detail?.count === 'number') this.scanCount = e.detail.count;
+    if (e.detail?.currentFile) this.currentScanFile = e.detail.currentFile;
+  };
+
+  handleScanDone = () => {
+    this.isScanning = false;
+  };
+
+  handleScanError = () => {
+    this.isScanning = false;
+  };
 
   handleSearchInput(e: Event) {
     const input = e.target as HTMLInputElement;
@@ -154,6 +222,12 @@ export class AppHeader extends LitElement {
         />
       </div>
       <div class="actions">
+        ${this.isScanning ? html`
+          <div class="scan-badge" title="${this.currentScanFile ? `Scanning: ${this.currentScanFile}` : 'Scanning library in background...'}">
+            <span class="scan-icon-spin">⏳</span>
+            <span>Scanning (${this.scanCount})</span>
+          </div>
+        ` : ''}
         <a href="/add" class="action-btn action-btn-primary" title="Add or scan new games">
           <span>+ Add Games</span>
         </a>

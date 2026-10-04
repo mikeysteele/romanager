@@ -177,8 +177,11 @@ export class AppSettingsPlatforms extends LitElement {
       if (!this.newSystemName.trim()) return;
 
       try {
+          const systemId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+              ? crypto.randomUUID()
+              : 'sys-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
           const payload = {
-              id: crypto.randomUUID(),
+              id: systemId,
               name: this.newSystemName.trim(),
               slug: this.newSystemName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
               path: this.newSystemPath.trim() || null

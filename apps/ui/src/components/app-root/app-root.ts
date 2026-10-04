@@ -1,6 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { Router } from '@lit-labs/router';
+import { toast } from '@repo/ui-components';
 
 // Import components to ensure they are registered
 import '../app-library/app-library.ts';
@@ -123,24 +124,86 @@ export class AppRoot extends LitElement {
     }
   ]);
 
+  private eventSource: EventSource | null = null;
+  private sseRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
   override connectedCallback() {
       super.connectedCallback();
       this.connectSSE();
   }
 
-  connectSSE() {
-    const eventSource = new EventSource('/api/events');
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'done') {
-            globalThis.dispatchEvent(new CustomEvent('roms-updated'));
-        }
-      } catch (e) {
-        console.error('Error parsing SSE event', e);
+  override disconnectedCallback() {
+      super.disconnectedCallback();
+      if (this.eventSource && typeof this.eventSource.close === 'function') {
+          this.eventSource.close();
       }
-    };
+      this.eventSource = null;
+      if (this.sseRetryTimer) {
+          clearTimeout(this.sseRetryTimer);
+          this.sseRetryTimer = null;
+      }
+  }
+
+  connectSSE() {
+    if (this.eventSource && typeof this.eventSource.close === 'function') {
+      this.eventSource.close();
+    }
+    this.eventSource = null;
+
+    try {
+      if (typeof EventSource === 'undefined') return;
+      const eventSource = new EventSource('/api/events');
+      this.eventSource = eventSource;
+
+      const handleMessageData = (raw: string) => {
+        try {
+          const data = JSON.parse(raw);
+          if (data.type === 'start') {
+            toast('Scanning library in background...', 'info', 3000);
+            globalThis.dispatchEvent(new CustomEvent('scan-started'));
+          } else if (data.type === 'progress') {
+            globalThis.dispatchEvent(new CustomEvent('scan-progress', { detail: data }));
+          } else if (data.type === 'done') {
+            if (data.action === 'rom-deleted' || data.action === 'game-deleted') {
+              globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+            } else {
+              const count = typeof data.count === 'number' ? data.count : 0;
+              const msg = count > 0 
+                ? `Scan complete! Discovered ${count} new file(s).` 
+                : 'Scan complete! Library is up to date.';
+              toast(msg, 'success', 5000);
+              globalThis.dispatchEvent(new CustomEvent('scan-done', { detail: { count } }));
+              globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+            }
+          } else if (data.type === 'error') {
+            toast(`Scan failed: ${data.message || 'Unknown error'}`, 'error', 6000);
+            globalThis.dispatchEvent(new CustomEvent('scan-error', { detail: data }));
+          }
+        } catch (e) {
+          console.error('Error parsing SSE event', e);
+        }
+      };
+
+      eventSource.onmessage = (event) => handleMessageData(event.data);
+      if (typeof eventSource.addEventListener === 'function') {
+        eventSource.addEventListener('update', (event: Event) => handleMessageData((event as MessageEvent).data));
+        eventSource.addEventListener('message', (event: Event) => handleMessageData((event as MessageEvent).data));
+      }
+
+      eventSource.onerror = () => {
+        if (typeof eventSource.close === 'function') {
+          eventSource.close();
+        }
+        if (!this.sseRetryTimer) {
+          this.sseRetryTimer = setTimeout(() => {
+            this.sseRetryTimer = null;
+            this.connectSSE();
+          }, 4000);
+        }
+      };
+    } catch (e) {
+      console.error('Failed to initialize EventSource:', e);
+    }
   }
 
   override render() {

@@ -41,4 +41,26 @@ if (dom.window.HTMLDialogElement) {
 (globalThis as any).requestAnimationFrame = (callback: any) => setTimeout(callback, 16);
 (globalThis as any).cancelAnimationFrame = (id: any) => clearTimeout(id);
 
+// Mock EventSource for JSDOM
+class MockEventSource {
+    url: string;
+    onmessage: ((e: any) => void) | null = null;
+    onerror: ((e: any) => void) | null = null;
+    listeners = new Map<string, Function[]>();
+    constructor(url: string) {
+        this.url = url;
+    }
+    addEventListener(type: string, fn: Function) {
+        const list = this.listeners.get(type) || [];
+        list.push(fn);
+        this.listeners.set(type, list);
+    }
+    removeEventListener(type: string, fn: Function) {
+        const list = this.listeners.get(type) || [];
+        this.listeners.set(type, list.filter(f => f !== fn));
+    }
+    close() {}
+}
+(globalThis as any).EventSource = MockEventSource;
+
 console.log("JSDOM setup complete");

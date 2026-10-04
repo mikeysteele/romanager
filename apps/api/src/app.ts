@@ -27,7 +27,7 @@ export default function createServer(romsDir: string, appDir: string) {
     const worker = new Worker(new URL("./workers/scanner.ts", import.meta.url).href, { type: "module" });
     worker.onmessage = (e) => {
         const msg = e.data;
-        if (msg.type === 'progress' || msg.type === 'done' || msg.type === 'error') {
+        if (msg.type === 'start' || msg.type === 'progress' || msg.type === 'done' || msg.type === 'error') {
             eventBus.emit('sse-message', msg);
         }
     };
