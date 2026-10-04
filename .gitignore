@@ -10,3 +10,4 @@ test.db*
 playwright-report
 test-results
 .features-gen
+storage/

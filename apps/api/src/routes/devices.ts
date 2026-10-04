@@ -5,9 +5,13 @@ import { eq, asc } from "drizzle-orm";
 import { requireAuth, createApiKeyRecord, type AuthVariables } from "../auth.ts";
 import { generateManifest } from "../manifest.ts";
 import { eventBus } from "../sse.ts";
-import type { Device, DeviceProfile, ProfileRule } from "@repo/shared";
+import { savesRouter } from "./saves.ts";
+import type { Device, ProfileRule } from "@repo/shared";
 
 export const devicesRouter = new Hono<{ Variables: AuthVariables }>();
+
+// Mount companion saves subrouter
+devicesRouter.route("/me/saves", savesRouter);
 
 // ==========================================
 // 1. Companion routes (/me/*) - Authenticated

@@ -50,6 +50,13 @@
       "when": 1791116962339,
       "tag": "0006_solid_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791120582517,
+      "tag": "0007_mushy_terror",
+      "breakpoints": true
     }
   ]
 }

@@ -70,18 +70,24 @@ export class UiToastContainer extends LitElement {
         `;
     }
 }
+export type ToastConfig = { message: string, type: ToastType, duration?: number };
 
 // Helper function to trigger toasts from anywhere
-export const toast = (message: string, type: ToastType = 'info', duration?: number) => {
+export function toast(conf: ToastConfig): void;
+export function toast(message: string, type?: ToastType, duration?: number): void;
+export function toast(messageOrConf: string | ToastConfig, type?: ToastType, duration?: number) {
     const target = typeof window !== 'undefined' ? window : globalThis;
     const targetObj = target as unknown as { CustomEvent?: typeof CustomEvent; dispatchEvent?: (e: Event) => boolean };
-    const EventCtor = targetObj.CustomEvent || CustomEvent;
+    const EventCtor = targetObj.CustomEvent || (typeof CustomEvent !== 'undefined' ? CustomEvent : Event);
+    const message = typeof messageOrConf === 'string' ? messageOrConf : messageOrConf.message;
+    type = (typeof messageOrConf === 'string' ? type : messageOrConf.type) ?? 'info';
+    duration = typeof messageOrConf === 'string' ? duration : messageOrConf.duration;
     if (typeof targetObj.dispatchEvent === 'function') {
-        targetObj.dispatchEvent(new EventCtor('ui-toast-notify', {
-            detail: { message, type, duration }
+        targetObj.dispatchEvent(new (EventCtor as any)('ui-toast-notify', {
+            detail: typeof messageOrConf === 'string' ? { message, type, duration } : messageOrConf
         }));
     }
-};
+}
 
 type ToastFn = typeof toast;
 
@@ -95,3 +101,4 @@ if (typeof window !== 'undefined') {
     (window as unknown as { toast?: ToastFn }).toast = toast;
 }
 globalThis.toast = toast;
+

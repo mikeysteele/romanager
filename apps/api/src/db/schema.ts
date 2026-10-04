@@ -274,4 +274,37 @@ export const apiKeys = sqliteTable("api_keys", {
 export const insertApiKeySchema = createInsertSchema(apiKeys);
 export const selectApiKeySchema = createSelectSchema(apiKeys);
 
+export const saveFiles = sqliteTable("save_files", {
+  id: text("id").primaryKey(),
+  deviceId: text("device_id").notNull().references(() => devices.id, { onDelete: 'cascade' }),
+  systemId: text("system_id"),
+  relativePath: text("relative_path").notNull(), // e.g. "snes/Super Mario World.srm"
+  currentSha1: text("current_sha1"),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+}, (table) => ({
+  deviceIdIdx: index("save_files_device_id_idx").on(table.deviceId),
+  relativePathIdx: index("save_files_rel_path_idx").on(table.relativePath),
+}));
+export const insertSaveFileSchema = createInsertSchema(saveFiles);
+export const selectSaveFileSchema = createSelectSchema(saveFiles);
+
+export const saveVersions = sqliteTable("save_versions", {
+  id: text("id").primaryKey(),
+  saveFileId: text("save_file_id").notNull().references(() => saveFiles.id, { onDelete: 'cascade' }),
+  sha1: text("sha1").notNull(),
+  size: integer("size", { mode: 'number' }).notNull(),
+  deviceMtime: text("device_mtime"),
+  storedPath: text("stored_path").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+}, (table) => ({
+  saveFileIdIdx: index("save_versions_save_file_id_idx").on(table.saveFileId),
+}));
+export const insertSaveVersionSchema = createInsertSchema(saveVersions);
+export const selectSaveVersionSchema = createSelectSchema(saveVersions);
+
+
 

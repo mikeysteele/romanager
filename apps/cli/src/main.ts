@@ -5,6 +5,7 @@ import { runSync } from "./commands/sync.ts";
 import { runAdopt } from "./commands/adopt.ts";
 import { runDoctor } from "./commands/doctor.ts";
 import { runWatch } from "./commands/watch.ts";
+import { runSaves } from "./commands/saves-cmd.ts";
 import { runConfig } from "./commands/config-cmd.ts";
 import { runAuthSetKey } from "./commands/auth-cmd.ts";
 import { CliError } from "./errors.ts";
@@ -23,6 +24,7 @@ Commands:
   watch          Daemon: sync on startup, then listen for server events and sync
   adopt          Claim existing local sets matching server manifest
   doctor         Run self-diagnostics on config, permissions, disk, and server
+  saves          Manage game saves: push, list, restore
   config         Get or set configuration values (config get|set)
   auth set-key   Update device API key
 
@@ -38,7 +40,7 @@ Global Options:
 export async function main(args: string[] = Deno.args): Promise<void> {
   const flags = parseArgs(args, {
     string: ["config", "server", "key", "preset", "system", "only", "poll"],
-    boolean: ["json", "quiet", "verbose", "dry-run", "help", "version"],
+    boolean: ["json", "quiet", "verbose", "dry-run", "help", "version", "force"],
     alias: {
       h: "help",
       q: "quiet",
@@ -118,6 +120,24 @@ export async function main(args: string[] = Deno.args): Promise<void> {
       case "doctor":
         await runDoctor(globalOpts);
         break;
+
+      case "saves": {
+        const action = subArgs[0] as "push" | "list" | "restore";
+        if (action !== "push" && action !== "list" && action !== "restore") {
+          console.error("Usage: romanager-sync saves push|list|restore [options]");
+          Deno.exit(1);
+        }
+        await runSaves({
+          action,
+          targetPath: subArgs[1],
+          system: flags.system,
+          version: typeof flags.version === "string" ? flags.version : undefined,
+          force: flags.force,
+          configPath: flags.config,
+          json: flags.json,
+        });
+        break;
+      }
 
       case "config": {
         const action = subArgs[0] as "get" | "set";
