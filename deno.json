@@ -6,6 +6,7 @@
   "workspace": [
     "./apps/api",
     "./apps/ui",
+    "./apps/cli",
     "./packages/shared",
     "./packages/ui-components"
   ],
