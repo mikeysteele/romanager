@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { filesystemRouter } from "../../../apps/api/src/routes/filesystem.ts";
 
 Deno.test("GET /api/filesystem/browse should return directories and shortcuts", async () => {

@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { fileTypesRouter } from "../../../apps/api/src/routes/fileTypes.ts";
 
 Deno.test("GET /api/file-types should return whitelist items", async () => {

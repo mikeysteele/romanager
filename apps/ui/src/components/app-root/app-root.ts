@@ -14,6 +14,7 @@ import '../app-unmapped/app-unmapped.ts';
 import '../app-add-game/app-add-game.ts';
 import '../app-header/app-header.ts';
 import '../app-sidebar/app-sidebar.ts';
+import '../app-system-detail/app-system-detail.ts';
 
 @customElement('app-root')
 export class AppRoot extends LitElement {

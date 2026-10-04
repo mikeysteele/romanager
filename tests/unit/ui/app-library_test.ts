@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import "../../../apps/ui/src/components/app-library/app-library.ts";
 import type { AppLibrary } from "../../../apps/ui/src/components/app-library/app-library.ts";
 
@@ -26,7 +26,7 @@ Deno.test("AppLibrary: fetches all games on load", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("AppLibrary: filters games locally", async () => {
+Deno.test("AppLibrary: filters games locally", () => {
     const el = document.createElement("app-library") as AppLibrary;
     el.games = [
         { id: "1", name: "Super Mario World", slug: "" } as any,

@@ -17,35 +17,80 @@ export class AppSidebar extends LitElement {
   // Internal state to track expanded items by ID
   @state() expandedItems = new Set<string>(['games']);
 
-  // Define the menu structure
-  private navItems: NavItem[] = [
-    {
+  @state() systems: Array<{ id: string; name: string; slug: string }> = [];
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.fetchSystems();
+    globalThis.addEventListener('roms-updated', this.handleRomsUpdated);
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    globalThis.removeEventListener('roms-updated', this.handleRomsUpdated);
+  }
+
+  handleRomsUpdated = () => {
+    this.fetchSystems();
+  };
+
+  async fetchSystems() {
+    try {
+      const res = await fetch('/api/systems');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          this.systems = data;
+        }
+      }
+    } catch {
+      // Ignored during test or offline
+    }
+  }
+
+  get computedNavItems(): NavItem[] {
+    const items: NavItem[] = [
+      {
         id: 'games',
         title: 'Games',
         href: '/',
         expanded: true,
         children: [
-            { id: 'add-new', title: 'Add New', href: '/add' },
-            { id: 'unmapped', title: 'Unmapped', href: '/unmapped' },
-            { id: 'collections', title: 'Collections', href: '#' },
-            { id: 'discover', title: 'Discover', href: '#' },
+          { id: 'library', title: 'All Games', href: '/' },
+          { id: 'add-new', title: 'Add New', href: '/add' },
+          { id: 'unmapped', title: 'Unmapped', href: '/unmapped' },
         ]
-    },
-            { id: 'activity', title: 'Activity', href: '#' },
-            { id: 'logs', title: 'Logs', href: '#' },
-    {
-        id: 'settings',
-        title: 'Settings',
-        href: '/settings',
-        expanded: location.pathname.startsWith('/settings'),
-        children: [
-            { id: 'settings-roms', title: 'ROM Management', href: '/settings/rom-management' },
-            { id: 'settings-platforms', title: 'Platforms', href: '/settings/platforms' },
-            { id: 'settings-file-types', title: 'File Types', href: '/settings/file-types' }
-        ]
+      }
+    ];
+
+    if (this.systems.length > 0) {
+      items.push({
+        id: 'systems',
+        title: 'Systems',
+        href: '#systems',
+        expanded: typeof globalThis.location !== 'undefined' ? globalThis.location?.pathname?.startsWith('/system') : false,
+        children: this.systems.map(s => ({
+          id: `system-${s.slug}`,
+          title: s.name,
+          href: `/system/${s.slug}`
+        }))
+      });
     }
 
-  ];
+    items.push({
+      id: 'settings',
+      title: 'Settings',
+      href: '/settings',
+      expanded: typeof globalThis.location !== 'undefined' ? globalThis.location?.pathname?.startsWith('/settings') : false,
+      children: [
+        { id: 'settings-roms', title: 'ROM Management', href: '/settings/rom-management' },
+        { id: 'settings-platforms', title: 'Platforms', href: '/settings/platforms' },
+        { id: 'settings-file-types', title: 'File Types', href: '/settings/file-types' }
+      ]
+    });
+
+    return items;
+  }
 
   static override styles = css`
     :host {
@@ -216,10 +261,11 @@ export class AppSidebar extends LitElement {
   }
 
   override render() {
+    const items = this.computedNavItems;
     return html`
     <aside>
       <div class="nav-list">
-        ${map(this.navItems, (item) => this.renderNavItem(item, this.navItems))}
+        ${map(items, (item) => this.renderNavItem(item, items))}
       </div>
     </aside>
     `;

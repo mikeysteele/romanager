@@ -21,7 +21,6 @@
     "vite": "npm:rolldown-vite@latest"
   },
   "compilerOptions": {
-    "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "lib": ["dom", "es2017", "dom.iterable"],
     "module": "esnext",

@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { scanRoms, verifyFileAgainstWhitelist } from "../../../apps/api/src/scanner.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { scannedFiles } from "../../../apps/api/src/db/schema.ts";
@@ -29,7 +29,9 @@ async function setupFixture() {
 async function teardownFixture() {
   try {
     await Deno.remove(FIXTURE_DIR, { recursive: true });
-  } catch {}
+  } catch {
+    // Ignore teardown error if fixture directory was already removed
+  }
 }
 
 Deno.test("verifyFileAgainstWhitelist: extension and magic number logic", async () => {
@@ -64,10 +66,6 @@ Deno.test("scanRoms stages only whitelisted files into scanned_files", async () 
   await setupFixture();
   try {
     await scanRoms(FIXTURE_DIR);
-
-    const sfcPath = (await Deno.realPath(join(FIXTURE_DIR, "game.sfc"))).replace(/\\/g, "/");
-    const validNesPath = (await Deno.realPath(join(FIXTURE_DIR, "valid.nes"))).replace(/\\/g, "/");
-    const txtPath = (await Deno.realPath(join(FIXTURE_DIR, "readme.txt"))).replace(/\\/g, "/");
 
     // game.sfc should be in scanned_files
     const sfcRecord = await db.select().from(scannedFiles)

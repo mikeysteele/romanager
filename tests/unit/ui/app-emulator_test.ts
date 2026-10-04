@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertEquals, assertExists } from "jsr:@std/assert";
+import { assertEquals, assertExists } from "jsr:@std/assert@^0.217.0";
 import "../../../apps/ui/src/components/app-emulator/app-emulator.ts";
 import type { AppEmulator } from "../../../apps/ui/src/components/app-emulator/app-emulator.ts";
 

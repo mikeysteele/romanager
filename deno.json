@@ -49,9 +49,14 @@
     "drizzle-zod": "npm:drizzle-zod@^0.5.1"
   },
   "lint": {
+    "exclude": [
+      ".features-gen",
+      "apps/ui/dist",
+      "test-results",
+      "playwright-report"
+    ],
     "rules": {
-        "tags": ["recommended"],
-        "include": ["no-explicit-any"]
+      "tags": ["recommended"]
     }
   }
 }

@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { romsRouter } from "../../../apps/api/src/routes/roms.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { roms, games, systems } from "../../../apps/api/src/db/schema.ts";

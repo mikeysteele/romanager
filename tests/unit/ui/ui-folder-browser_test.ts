@@ -4,7 +4,7 @@ import "../../../packages/ui-components/src/ui-folder-browser/ui-folder-browser.
 import type { UiFolderBrowser } from "../../../packages/ui-components/src/ui-folder-browser/ui-folder-browser.ts";
 
 function mockBrowseFetch(responsePath = "/home/roms", subdirs = ["nes", "snes", "genesis"]) {
-    (globalThis as any).fetch = (url: string) => {
+    (globalThis as unknown as { fetch: unknown }).fetch = (url: string) => {
         if (url.includes("/api/filesystem/browse")) {
             return Promise.resolve({
                 ok: true,
@@ -78,21 +78,22 @@ Deno.test("UiFolderBrowser: selecting folder dispatches folder-selected and clos
 
     assertEquals(el.selectedPath, "/games/library/arcade");
 
-    let selectedEventDetail: any = null;
+    let selectedEventDetail: { path?: string } | undefined = undefined;
     let closeFired = false;
-    el.addEventListener("folder-selected", (e: any) => {
-        selectedEventDetail = e.detail;
+    el.addEventListener("folder-selected", (e: Event) => {
+        selectedEventDetail = (e as CustomEvent<{ path: string }>).detail;
     });
     el.addEventListener("ui-folder-browser-close", () => {
         closeFired = true;
     });
 
     // Click "Select This Folder" button
-    const selectBtn = el.shadowRoot?.querySelector(".footer-actions ui-button[variant='primary']") as any;
+    const selectBtn = el.shadowRoot?.querySelector(".footer-actions ui-button[variant='primary']");
     assertEquals(!!selectBtn, true);
     el.handleSelectFolder();
 
-    assertEquals(selectedEventDetail?.path, "/games/library/arcade");
+    const resultDetail = selectedEventDetail as unknown as { path?: string };
+    assertEquals(resultDetail?.path, "/games/library/arcade");
     assertEquals(closeFired, true);
     assertEquals(el.open, false);
 

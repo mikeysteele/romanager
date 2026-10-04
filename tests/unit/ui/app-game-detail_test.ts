@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertEquals, assertExists } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import "../../../apps/ui/src/components/app-game-detail/app-game-detail.ts";
 import type { AppGameDetail } from "../../../apps/ui/src/components/app-game-detail/app-game-detail.ts";
 
