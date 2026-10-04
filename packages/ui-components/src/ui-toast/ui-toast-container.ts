@@ -40,17 +40,12 @@ export class UiToastContainer extends LitElement {
         target.removeEventListener('ui-toast-notify', this.handleNotify as EventListener);
     }
 
-    private generateId(): string {
-        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-            return crypto.randomUUID();
-        }
-        return 'toast-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
-    }
+    private toastSequence = 0;
 
     private handleNotify = (e: CustomEvent) => {
         const { message, type = 'info', duration } = e.detail;
         const toast: ToastItem = {
-            id: this.generateId(),
+            id: `toast-${++this.toastSequence}`,
             message,
             type,
             duration
