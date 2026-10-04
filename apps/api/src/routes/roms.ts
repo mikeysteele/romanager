@@ -9,11 +9,38 @@ export const romsRouter = new Hono();
 
 romsRouter.get("/", async (c) => {
     try {
-        const romsList = await db.select().from(roms).where(eq(roms.pendingDelete, false));
+        const limitParam = c.req.query("limit");
+        const offsetParam = c.req.query("offset");
+        let query = db.select().from(roms).where(eq(roms.pendingDelete, false));
+        if (limitParam) {
+            const limit = parseInt(limitParam, 10);
+            if (!isNaN(limit) && limit > 0) {
+                query = query.limit(limit) as typeof query;
+                if (offsetParam) {
+                    const offset = parseInt(offsetParam, 10);
+                    if (!isNaN(offset) && offset > 0) {
+                        query = query.offset(offset) as typeof query;
+                    }
+                }
+            }
+        }
+        const romsList = await query;
         return c.json(romsList);
     } catch (e) {
         console.error("Failed to fetch roms:", e);
         return c.json({ error: "Failed to fetch roms." }, 500);
+    }
+});
+
+romsRouter.get("/:id", async (c) => {
+    const id = c.req.param("id");
+    try {
+        const romData = await getRomById(id);
+        if (!romData) return c.notFound();
+        return c.json(romData);
+    } catch (e) {
+        console.error(`Failed to fetch rom ${id}:`, e);
+        return c.json({ error: "Failed to fetch rom." }, 500);
     }
 });
 

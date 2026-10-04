@@ -2,7 +2,7 @@ import { walk } from "@std/fs";
 import { normalize as normalizePath } from "@std/path";
 import { db } from "./db/index.ts";
 import { roms, scannedFiles, fileTypeWhitelist } from "./db/schema.ts";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Rom } from "@repo/shared";
 import { seedDefaultFileTypeWhitelist, DEFAULT_FILE_TYPES } from "./db/queries.ts";
 
@@ -75,8 +75,6 @@ export async function verifyFileAgainstWhitelist(
 export async function scanRoms(rootDir: string, onProgress?: (info: { count: number, currentFile: string }) => void): Promise<Rom[]> {
   console.log(`Scanning ${rootDir}...`);
   
-  const foundRoms: FoundRom[] = [];
-  
   try {
     await Deno.stat(rootDir);
   } catch (_e) {
@@ -99,10 +97,53 @@ export async function scanRoms(rootDir: string, onProgress?: (info: { count: num
     activeWhitelist = DEFAULT_FILE_TYPES.map(t => ({ extension: t.extension, magicNumber: t.magicNumber }));
   }
 
-  let count = 0;
+  const BATCH_SIZE = 250;
+  const newlyStaged: Rom[] = [];
+  let pendingBatch: FoundRom[] = [];
+  let totalWalked = 0;
+
+  const flushBatch = async (batch: FoundRom[]) => {
+    if (batch.length === 0) return;
+
+    const batchPaths = batch.map(b => b.path);
+
+    // Query existing records in bulk across roms and scannedFiles
+    const [existingRoms, existingScans] = await Promise.all([
+      db.select({ path: roms.path }).from(roms).where(inArray(roms.path, batchPaths)),
+      db.select({ path: scannedFiles.path }).from(scannedFiles).where(inArray(scannedFiles.path, batchPaths)),
+    ]);
+
+    const existingPaths = new Set<string>([
+      ...existingRoms.map(r => r.path),
+      ...existingScans.map(s => s.path),
+    ]);
+
+    const toInsert = batch.filter(f => !existingPaths.has(f.path));
+    if (toInsert.length > 0) {
+      const recordsToInsert = toInsert.map(file => ({
+        id: crypto.randomUUID(),
+        path: file.path,
+        filename: file.filename,
+        size: file.size,
+      }));
+
+      await db.insert(scannedFiles).values(recordsToInsert).onConflictDoNothing();
+
+      for (const rec of recordsToInsert) {
+        newlyStaged.push({
+          id: rec.id,
+          systemId: "",
+          filename: rec.filename,
+          path: rec.path,
+          size: rec.size,
+        });
+      }
+    }
+  };
+
   for await (const entry of walk(rootDir, { includeDirs: false })) {
-    count++;
-    if (onProgress) onProgress({ count, currentFile: entry.name });
+    totalWalked++;
+    if (onProgress) onProgress({ count: totalWalked, currentFile: entry.name });
 
     // Filter against file type whitelist & magic numbers
     const isWhitelisted = await verifyFileAgainstWhitelist(entry.path, entry.name, activeWhitelist);
@@ -127,36 +168,24 @@ export async function scanRoms(rootDir: string, onProgress?: (info: { count: num
         continue;
     }
     
-    foundRoms.push({
+    pendingBatch.push({
         filename: entry.name,
         path: normalizePath(entry.path),
         size,
     });
+
+    if (pendingBatch.length >= BATCH_SIZE) {
+      await flushBatch(pendingBatch);
+      pendingBatch = [];
+    }
   }
 
+  // Flush remaining items
+  if (pendingBatch.length > 0) {
+    await flushBatch(pendingBatch);
+    pendingBatch = [];
+  }
 
-  console.log(`Processing ${foundRoms.length} files...`);
-
-  await db.transaction(async (tx) => {
-      for (const file of foundRoms) {
-          // 1. Check if already in Library (roms table)
-          const existingRom = await tx.select().from(roms).where(eq(roms.path, file.path)).get();
-          if (existingRom) continue;
-
-          // 2. Check if already in Scanned Files
-          const existingScan = await tx.select().from(scannedFiles).where(eq(scannedFiles.path, file.path)).get();
-          if (existingScan) continue;
-
-          // 3. Insert into Scanned Files
-          await tx.insert(scannedFiles).values({
-              id: crypto.randomUUID(),
-              path: file.path,
-              filename: file.filename,
-              size: file.size,
-          });
-      }
-  });
-
-  // Return empty array as we are no longer auto-importing
-  return [];
+  console.log(`Scan completed. Discovered ${totalWalked} files, newly staged ${newlyStaged.length} files.`);
+  return newlyStaged;
 }

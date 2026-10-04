@@ -7,9 +7,26 @@ export const unmappedRouter = new Hono();
 
 unmappedRouter.get("/", async (c) => {
     try {
-        const files = await db.select()
+        const limitParam = c.req.query("limit");
+        const offsetParam = c.req.query("offset");
+        let query = db.select()
             .from(scannedFiles)
             .where(eq(scannedFiles.ignored, false));
+
+        if (limitParam) {
+            const limit = parseInt(limitParam, 10);
+            if (!isNaN(limit) && limit > 0) {
+                query = query.limit(limit) as typeof query;
+                if (offsetParam) {
+                    const offset = parseInt(offsetParam, 10);
+                    if (!isNaN(offset) && offset > 0) {
+                        query = query.offset(offset) as typeof query;
+                    }
+                }
+            }
+        }
+
+        const files = await query;
         return c.json(files);
     } catch (e) {
         console.error("Error fetching unmapped files:", e);

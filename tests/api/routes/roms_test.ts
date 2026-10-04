@@ -12,6 +12,47 @@ Deno.test("GET / should return active roms", async () => {
     assertEquals(Array.isArray(json), true);
 });
 
+Deno.test("GET / with limit and offset should support pagination", async () => {
+    const req = new Request("http://localhost/?limit=1&offset=0");
+    const res = await romsRouter.request(req);
+    assertEquals(res.status, 200);
+    const json = await res.json();
+    assertEquals(Array.isArray(json), true);
+    assertEquals(json.length <= 1, true);
+});
+
+Deno.test("GET /:id should return single rom details", async () => {
+    const sysId = "test-system-roms-get";
+    const gameId = "test-game-roms-get";
+    const romId = "test-get-rom-" + Date.now();
+
+    await db.insert(systems).values({ id: sysId, name: "SysGet", slug: sysId }).onConflictDoNothing();
+    await db.insert(games).values({ id: gameId, name: "GameGet", slug: gameId }).onConflictDoNothing();
+    await db.insert(roms).values({
+        id: romId,
+        gameId,
+        systemId: sysId,
+        filename: "single.rom",
+        path: `/tmp/${romId}.rom`,
+        size: 2048,
+        pendingDelete: false
+    });
+
+    try {
+        const req = new Request(`http://localhost/${romId}`);
+        const res = await romsRouter.request(req);
+        assertEquals(res.status, 200);
+        const json = await res.json();
+        assertEquals(json.id, romId);
+        assertEquals(json.filename, "single.rom");
+        assertEquals(json.platform, "SysGet");
+    } finally {
+        await db.delete(roms).where(eq(roms.id, romId));
+        await db.delete(games).where(eq(games.id, gameId));
+        await db.delete(systems).where(eq(systems.id, sysId));
+    }
+});
+
 Deno.test("DELETE /:id should mark rom as pendingDelete", async () => {
     const sysId = "test-system-roms-del";
     const gameId = "test-game-roms-del";

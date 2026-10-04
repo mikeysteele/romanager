@@ -28,7 +28,11 @@ gamesRouter.get("/", async (c) => {
         const game = await getGameBySlug(slug);
         return c.json(game ? [game] : []);
     }
-    const gamesList = await getGames();
+    const limitParam = c.req.query("limit");
+    const offsetParam = c.req.query("offset");
+    const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+    const offset = offsetParam ? parseInt(offsetParam, 10) : undefined;
+    const gamesList = await getGames(limit, offset);
     return c.json(gamesList);
 });
 

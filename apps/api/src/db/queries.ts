@@ -37,8 +37,15 @@ export async function findOrCreateGame(title: string, tx: Tx = db as unknown as 
     return result[0];
 }
 
-export async function getGames() {
-  return await db.select().from(games).orderBy(games.name);
+export async function getGames(limit?: number, offset?: number) {
+  let query = db.select().from(games).orderBy(games.name);
+  if (limit !== undefined && limit > 0) {
+    query = query.limit(limit) as typeof query;
+    if (offset !== undefined && offset > 0) {
+      query = query.offset(offset) as typeof query;
+    }
+  }
+  return await query;
 }
 
 export async function searchLocalGames(query: string) {
