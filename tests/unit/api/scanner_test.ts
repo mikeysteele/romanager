@@ -1,13 +1,15 @@
 import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { scanRoms, verifyFileAgainstWhitelist } from "../../../apps/api/src/scanner.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
-import { scannedFiles } from "../../../apps/api/src/db/schema.ts";
+import { scannedFiles, scannedSets } from "../../../apps/api/src/db/schema.ts";
 import { join } from "@std/path";
 import { eq, like, and } from "drizzle-orm";
 
 const FIXTURE_DIR = "./tests/fixtures/roms_whitelist_test";
 
 async function setupFixture() {
+  await db.delete(scannedFiles).where(like(scannedFiles.path, "%roms_whitelist_test%"));
+  await db.delete(scannedSets).where(like(scannedSets.basePath, "%roms_whitelist_test%"));
   await Deno.mkdir(FIXTURE_DIR, { recursive: true });
   
   // 1. Whitelisted extension without magic number
@@ -27,6 +29,8 @@ async function setupFixture() {
 }
 
 async function teardownFixture() {
+  await db.delete(scannedFiles).where(like(scannedFiles.path, "%roms_whitelist_test%"));
+  await db.delete(scannedSets).where(like(scannedSets.basePath, "%roms_whitelist_test%"));
   try {
     await Deno.remove(FIXTURE_DIR, { recursive: true });
   } catch {

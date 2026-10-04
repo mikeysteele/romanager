@@ -9,7 +9,7 @@ import {
   scannedSetFiles,
   fileTypeWhitelist
 } from "./db/schema.ts";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import type { Rom } from "@repo/shared";
 import { seedDefaultFileTypeWhitelist, DEFAULT_FILE_TYPES } from "./db/queries.ts";
 import { verifyFileAgainstWhitelist } from "./scanner.ts";
@@ -420,7 +420,7 @@ export async function scanRomsWithSets(
     // Check if launch file or paths already exist in DB
     const [existingRom, existingScannedSet, existingScannedFile] = await Promise.all([
       db.select({ id: roms.id }).from(roms).where(eq(roms.path, launchPath)).get(),
-      db.select({ id: scannedSets.id }).from(scannedSets).where(eq(scannedSets.launchFile, dSet.launchFile)).get(),
+      db.select({ id: scannedSets.id }).from(scannedSets).where(and(eq(scannedSets.basePath, dSet.basePath), eq(scannedSets.launchFile, dSet.launchFile))).get(),
       db.select({ id: scannedFiles.id }).from(scannedFiles).where(eq(scannedFiles.path, launchPath)).get(),
     ]);
 

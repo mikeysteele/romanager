@@ -4,6 +4,7 @@ import { runStatus } from "./commands/status.ts";
 import { runSync } from "./commands/sync.ts";
 import { runAdopt } from "./commands/adopt.ts";
 import { runDoctor } from "./commands/doctor.ts";
+import { runWatch } from "./commands/watch.ts";
 import { runConfig } from "./commands/config-cmd.ts";
 import { runAuthSetKey } from "./commands/auth-cmd.ts";
 import { CliError } from "./errors.ts";
@@ -19,6 +20,7 @@ Commands:
   status         Check server connectivity, device status, and pending changes
   plan           Dry-run reconcile: list additions, updates, removals, and conflicts
   sync           Reconcile local ROMs/BIOS with server manifest
+  watch          Daemon: sync on startup, then listen for server events and sync
   adopt          Claim existing local sets matching server manifest
   doctor         Run self-diagnostics on config, permissions, disk, and server
   config         Get or set configuration values (config get|set)
@@ -35,7 +37,7 @@ Global Options:
 
 export async function main(args: string[] = Deno.args): Promise<void> {
   const flags = parseArgs(args, {
-    string: ["config", "server", "key", "preset", "system", "only"],
+    string: ["config", "server", "key", "preset", "system", "only", "poll"],
     boolean: ["json", "quiet", "verbose", "dry-run", "help", "version"],
     alias: {
       h: "help",
@@ -94,6 +96,14 @@ export async function main(args: string[] = Deno.args): Promise<void> {
           dryRun: flags["dry-run"],
           system: flags.system,
           only: flags.only as any,
+        });
+        break;
+
+      case "watch":
+        await runWatch({
+          configPath: flags.config,
+          poll: flags.poll,
+          quiet: flags.quiet,
         });
         break;
 

@@ -9,6 +9,7 @@ import '../app-settings/app-settings.ts';
 import '../app-settings-roms/app-settings-roms.ts';
 import '../app-settings-platforms/app-settings-platforms.ts';
 import '../app-settings-file-types/app-settings-file-types.ts';
+import '../app-settings-devices/app-settings-devices.ts';
 import '../app-game-detail/app-game-detail.ts';
 import '../app-emulator/app-emulator.ts';
 import '../app-unmapped/app-unmapped.ts';
@@ -101,6 +102,10 @@ export class AppRoot extends LitElement {
     { 
         path: '/settings/file-types', 
         render: () => html`<app-settings-file-types></app-settings-file-types> `
+    },
+    { 
+        path: '/settings/devices', 
+        render: () => html`<app-settings-devices></app-settings-devices> `
     },
     { 
         path: '/unmapped', 

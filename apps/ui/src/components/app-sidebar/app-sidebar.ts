@@ -104,7 +104,8 @@ export class AppSidebar extends LitElement {
       children: [
         { id: 'settings-roms', title: 'ROM Management', href: '/settings/rom-management' },
         { id: 'settings-platforms', title: 'Platforms', href: '/settings/platforms' },
-        { id: 'settings-file-types', title: 'File Types', href: '/settings/file-types' }
+        { id: 'settings-file-types', title: 'File Types', href: '/settings/file-types' },
+        { id: 'settings-devices', title: 'Devices & Sync', href: '/settings/devices' }
       ]
     });
 

@@ -84,6 +84,11 @@ export class AppSettings extends LitElement {
             <h2>File Types Whitelist</h2>
             <p>Configure whitelisted ROM & BIOS file extensions and optional magic-number signatures for scanning.</p>
           </a>
+          <a href="/settings/devices" class="card">
+            <span class="card-icon">📱</span>
+            <h2>Devices & Sync</h2>
+            <p>Manage companion handhelds & consoles, customize sync profiles and filtering rules, and preview manifests.</p>
+          </a>
         </div>
       </div>
     `;
