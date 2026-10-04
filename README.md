@@ -40,6 +40,7 @@ For comprehensive technical documentation, refer to the guides in the [`docs/`](
 - 📡 **[API Reference](docs/api-reference.md)**: Complete REST API documentation, endpoints, query parameters, payloads, and SSE stream contracts.
 - 🗄️ **[Database Schema](docs/database-schema.md)**: Entity-Relationship diagram, table schemas, relationships, and indexing.
 - 🎨 **[UI Components & Design System](docs/ui-components.md)**: Lit component catalog, routing table, and Open Props design tokens.
+- 🔄 **[Companion CLI (Draft)](docs/companion-cli.md)**: On-device sync agent for Batocera / EmulationStation.
 
 ---
 

@@ -54,7 +54,15 @@ romsRouter.delete("/:id", async (c) => {
         // Mark as pending delete to hide immediately
         await db.update(roms).set({ pendingDelete: true }).where(eq(roms.id, id));
 
-        const pathsToDelete = [romData.path];
+        const pathsToDelete: string[] = [];
+        if (romData.files && Array.isArray(romData.files)) {
+            for (const f of romData.files) {
+                if (f.path) pathsToDelete.push(f.path);
+            }
+        }
+        if (romData.path && !pathsToDelete.includes(romData.path)) {
+            pathsToDelete.push(romData.path);
+        }
 
         const worker = getDeletionWorker();
         

@@ -123,3 +123,31 @@ Deno.test("DELETE /:id returns 404 for non-existent system", async () => {
     const res = await systemsRouter.request(req);
     assertEquals(res.status, 404);
 });
+
+Deno.test("PATCH /:id updates esFolder and name", async () => {
+    const sysId = "test-sys-patch-" + Date.now();
+    await db.insert(systems).values({
+        id: sysId,
+        name: "Patch Test",
+        slug: "patch-test-" + Date.now(),
+        esFolder: null,
+    });
+
+    try {
+        const req = new Request(`http://localhost/${sysId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ esFolder: "snes" }),
+        });
+        const res = await systemsRouter.request(req);
+        assertEquals(res.status, 200);
+        const data = await res.json();
+        assertEquals(data.esFolder, "snes");
+
+        const inDb = await db.select().from(systems).where(eq(systems.id, sysId)).get();
+        assertEquals(inDb?.esFolder, "snes");
+    } finally {
+        await db.delete(systems).where(eq(systems.id, sysId));
+    }
+});
+

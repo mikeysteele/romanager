@@ -57,7 +57,7 @@ export class UiSearchInput extends LitElement {
     @property({ type: Boolean }) loading = false;
     @property({ type: Number }) debounceMs = 500;
 
-    private debounceTimer?: number;
+    private debounceTimer?: ReturnType<typeof setTimeout>;
 
     private handleInput(e: Event) {
         const target = e.target as HTMLInputElement;

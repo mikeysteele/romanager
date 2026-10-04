@@ -1,7 +1,8 @@
 import { Hono } from "@hono/hono";
 import { eq } from "drizzle-orm";
+import { dirname } from "@std/path";
 import { db } from "../db/index.ts";
-import { games, scannedFiles, roms, systems, platforms, gamePlatforms } from "../db/schema.ts";
+import { games, scannedFiles, roms, romFiles, scannedSets, scannedSetFiles, systems, platforms, gamePlatforms } from "../db/schema.ts";
 import { generateId, slugify } from "../utils.ts";
 import { eventBus } from "../sse.ts";
 
@@ -81,17 +82,107 @@ importRouter.post("/", async (c) => {
                 }
             }
 
-            // 3. Create Roms
-            for (const scannedFile of filesToImport) {
+            // 3. Create Roms and RomFiles
+            const setGroups = new Map<string, typeof filesToImport>();
+            const looseFiles: typeof filesToImport = [];
+
+            for (const file of filesToImport) {
+                if (file.setId) {
+                    const list = setGroups.get(file.setId) || [];
+                    list.push(file);
+                    setGroups.set(file.setId, list);
+                } else {
+                    looseFiles.push(file);
+                }
+            }
+
+            // Process set groups
+            for (const [setId, groupFiles] of setGroups.entries()) {
+                const sSet = await tx.select().from(scannedSets).where(eq(scannedSets.id, setId)).get();
+                const setDbFiles = await tx.select().from(scannedSetFiles).where(eq(scannedSetFiles.setId, setId));
+                
+                const allFiles = setDbFiles.length > 0 ? setDbFiles : groupFiles;
+                const launchFileObj = allFiles.find(f => f.role === "launch") || allFiles[0];
+                const totalSize = allFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+                const launchFilename = launchFileObj?.filename || sSet?.launchFile || groupFiles[0].filename;
+                const launchPath = launchFileObj?.path || groupFiles[0].path;
+                const basePath = sSet?.basePath || dirname(launchPath);
+                const setType = sSet?.setType || (launchFilename.endsWith(".cue") ? "cue" : launchFilename.endsWith(".m3u") ? "m3u" : "single");
+                const setHash = sSet?.setHash || null;
+
+                const romId = crypto.randomUUID();
                 await tx.insert(roms).values({
-                     id: crypto.randomUUID(),
+                    id: romId,
+                    gameId: finalGameId,
+                    systemId,
+                    name: sSet?.name || launchFilename.substring(0, launchFilename.lastIndexOf(".")) || launchFilename,
+                    setType,
+                    basePath,
+                    launchFile: launchFilename,
+                    filename: launchFilename,
+                    path: launchPath,
+                    size: totalSize,
+                    totalSize,
+                    setHash,
+                    status: sSet?.status || "complete",
+                    region,
+                    sha1: launchFileObj?.sha1,
+                });
+
+                for (const member of allFiles) {
+                    await tx.insert(romFiles).values({
+                        id: crypto.randomUUID(),
+                        romId,
+                        relPath: member.relPath || member.filename,
+                        path: member.path,
+                        filename: member.filename,
+                        size: member.size,
+                        sha1: member.sha1,
+                        md5: member.md5,
+                        crc32: member.crc32,
+                        role: member.role || "launch",
+                        mtime: member.mtime,
+                    }).onConflictDoNothing();
+                }
+
+                await tx.delete(scannedSetFiles).where(eq(scannedSetFiles.setId, setId));
+                await tx.delete(scannedSets).where(eq(scannedSets.id, setId));
+            }
+
+            // Process loose files
+            for (const scannedFile of looseFiles) {
+                const romId = crypto.randomUUID();
+                const totalSize = scannedFile.size || 0;
+                await tx.insert(roms).values({
+                     id: romId,
                      gameId: finalGameId,
                      systemId,
+                     name: scannedFile.filename.substring(0, scannedFile.filename.lastIndexOf(".")) || scannedFile.filename,
+                     setType: "single",
+                     basePath: dirname(scannedFile.path),
+                     launchFile: scannedFile.filename,
                      filename: scannedFile.filename,
                      path: scannedFile.path,
-                     size: scannedFile.size,
-                     region
+                     size: totalSize,
+                     totalSize,
+                     setHash: scannedFile.sha1 || null,
+                     status: "complete",
+                     region,
+                     sha1: scannedFile.sha1,
                 });
+
+                await tx.insert(romFiles).values({
+                    id: crypto.randomUUID(),
+                    romId,
+                    relPath: scannedFile.filename,
+                    path: scannedFile.path,
+                    filename: scannedFile.filename,
+                    size: totalSize,
+                    sha1: scannedFile.sha1,
+                    md5: scannedFile.md5,
+                    crc32: scannedFile.crc32,
+                    role: "launch",
+                }).onConflictDoNothing();
             }
 
             // 3.5 Ensure Game-Platform relation exists

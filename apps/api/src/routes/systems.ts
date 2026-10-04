@@ -2,6 +2,9 @@ import { Hono } from "@hono/hono";
 import { getSystems, getSystemBySlug, getGamesBySystemSlug, findOrCreateSystem, deleteSystem } from "../db/queries.ts";
 import { eventBus } from "../sse.ts";
 import { SystemSchema } from "@repo/shared";
+import { db } from "../db/index.ts";
+import { systems } from "../db/schema.ts";
+import { eq } from "drizzle-orm";
 
 export const systemsRouter = new Hono();
 
@@ -21,7 +24,7 @@ systemsRouter.post("/", async (c) => {
     
     try {
         const sys = parseResult.data;
-        const result = await findOrCreateSystem(sys.name, sys.path);
+        const result = await findOrCreateSystem(sys.name, sys.path, sys.esFolder || null);
         eventBus.emit('sse-message', {
             type: 'done',
             action: 'platform-created',
@@ -40,6 +43,24 @@ systemsRouter.post("/", async (c) => {
     } catch (e) {
         console.error("Failed to map system manually:", e);
         return c.json({ error: "Failed to create manual platform target", message: String(e) }, 500);
+    }
+});
+
+systemsRouter.patch("/:id", async (c) => {
+    const id = c.req.param("id");
+    try {
+        const body = await c.req.json();
+        const updates: { esFolder?: string | null; name?: string; path?: string | null } = {};
+        if ("esFolder" in body) updates.esFolder = body.esFolder;
+        if ("name" in body) updates.name = body.name;
+        if ("path" in body) updates.path = body.path;
+
+        await db.update(systems).set(updates).where(eq(systems.id, id));
+        const updated = await db.select().from(systems).where(eq(systems.id, id)).get();
+        if (!updated) return c.notFound();
+        return c.json(updated);
+    } catch (e) {
+        return c.json({ error: "Failed to update system", message: String(e) }, 500);
     }
 });
 

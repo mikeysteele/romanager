@@ -1,5 +1,5 @@
 import { db } from "./index.ts";
-import { games, roms, systems, settings, platforms, gamePlatforms, systemFirmware, fileTypeWhitelist } from "./schema.ts";
+import { games, roms, romFiles, systems, settings, platforms, gamePlatforms, systemFirmware, fileTypeWhitelist } from "./schema.ts";
 import { eq, like, inArray, and, or, sql } from "drizzle-orm";
 import { slugify } from "../utils.ts";
 import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
@@ -11,14 +11,22 @@ import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 // deno-lint-ignore no-explicit-any
 type Tx = SQLiteTransaction<any, any, any, any>;
 
-export async function findOrCreateSystem(name: string, path: string | null = null, tx: Tx = db as unknown as Tx) {
+import { getDefaultEsFolder } from "../platform-mappings.ts";
+
+export async function findOrCreateSystem(name: string, path: string | null = null, esFolder: string | null = null, tx: Tx = db as unknown as Tx) {
   const existing = await tx.select().from(systems).where(eq(systems.name, name));
   if (existing.length > 0) {
+    if (!existing[0].esFolder && (esFolder || getDefaultEsFolder(existing[0].slug))) {
+      const folder = esFolder || getDefaultEsFolder(existing[0].slug);
+      await tx.update(systems).set({ esFolder: folder }).where(eq(systems.id, existing[0].id));
+      existing[0].esFolder = folder;
+    }
     return existing[0];
   }
   const slug = slugify(name);
   const id = crypto.randomUUID();
-  const result = await tx.insert(systems).values({ id, name, slug, path }).returning();
+  const folder = esFolder || getDefaultEsFolder(slug);
+  const result = await tx.insert(systems).values({ id, name, slug, path, esFolder: folder }).returning();
   return result[0];
 }
 
@@ -101,8 +109,20 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
     .leftJoin(systems, eq(roms.systemId, systems.id))
     .where(and(eq(roms.gameId, game.id), eq(roms.pendingDelete, false)));
     
+    const rawRomIds = rawRoms.map(r => r.rom.id);
+    let allRomFiles: (typeof romFiles.$inferSelect)[] = [];
+    if (rawRomIds.length > 0) {
+        allRomFiles = await db.select().from(romFiles).where(inArray(romFiles.romId, rawRomIds));
+    }
+    const romFilesMap = new Map<string, (typeof romFiles.$inferSelect)[]>();
+    for (const rf of allRomFiles) {
+        const list = romFilesMap.get(rf.romId) || [];
+        list.push(rf);
+        romFilesMap.set(rf.romId, list);
+    }
+
     // Map and deduplicate ROMs into their respective platforms by platform name
-    const uniquePlatformsMap = new Map<string, { id: string; name: string; slug: string; roms: (typeof roms.$inferSelect)[] }>();
+    const uniquePlatformsMap = new Map<string, { id: string; name: string; slug: string; roms: (typeof roms.$inferSelect & { files?: typeof allRomFiles })[] }>();
 
     for (const plat of gamePlats) {
         const platKey = plat.name.toLowerCase().trim();
@@ -115,7 +135,10 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
                 const platName = plat.name.toLowerCase();
                 return sysName === platName || sysName.includes(platName) || platName.includes(sysName);
             })
-            .map(r => r.rom);
+            .map(r => ({
+                ...r.rom,
+                files: romFilesMap.get(r.rom.id) || []
+            }));
 
         if (existing) {
             const seenRomIds = new Set(existing.roms.map(r => r.id));
@@ -150,21 +173,31 @@ export async function getGameBySlug(slug: string) {
 }
 
 export async function deleteGameFromDb(id: string) {
-    // 1. Get associated ROM paths before deletion
-    const associatedRoms = await db.select({ path: roms.path }).from(roms).where(eq(roms.gameId, id));
-    const romPaths = associatedRoms.map(r => r.path);
+    // 1. Get associated ROM paths before deletion from both roms and rom_files
+    const associatedRoms = await db.select({ id: roms.id, path: roms.path }).from(roms).where(eq(roms.gameId, id));
+    const romIds = associatedRoms.map(r => r.id);
+    let allPaths = associatedRoms.map(r => r.path).filter((p): p is string => Boolean(p));
+
+    if (romIds.length > 0) {
+        const associatedFiles = await db.select({ path: romFiles.path }).from(romFiles).where(inArray(romFiles.romId, romIds));
+        allPaths = Array.from(new Set([...allPaths, ...associatedFiles.map(f => f.path)]));
+    }
 
     // Run cascade deletions in a transaction
     await db.transaction(async (tx) => {
         // 2. Delete Game-Platforms relationships
         await tx.delete(gamePlatforms).where(eq(gamePlatforms.gameId, id));
-        // 3. Delete Roms
+        // 3. Delete Rom files
+        if (romIds.length > 0) {
+            await tx.delete(romFiles).where(inArray(romFiles.romId, romIds));
+        }
+        // 4. Delete Roms
         await tx.delete(roms).where(eq(roms.gameId, id));
-        // 4. Delete root Game
+        // 5. Delete root Game
         await tx.delete(games).where(eq(games.id, id));
     });
 
-    return romPaths;
+    return allPaths;
 }
 
 export async function getSystems() {
@@ -310,9 +343,12 @@ export async function getRomById(id: string) {
     if (rom.systemId) {
         system = await db.select().from(systems).where(eq(systems.id, rom.systemId)).get();
     }
+
+    const files = await db.select().from(romFiles).where(eq(romFiles.romId, id));
     
     return { 
         ...rom, 
+        files,
         platform: system ? system.name : "unknown",
         system: system
     };

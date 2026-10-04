@@ -1,5 +1,5 @@
 import { db } from "./db/index.ts";
-import { roms } from "./db/schema.ts";
+import { roms, romFiles } from "./db/schema.ts";
 import { eq } from "drizzle-orm";
 import { eventBus } from "./sse.ts";
 
@@ -17,6 +17,7 @@ export function getDeletionWorker(): Worker {
 
             try {
                 if (type === 'ROM_DELETED') {
+                    await db.delete(romFiles).where(eq(romFiles.romId, id));
                     await db.delete(roms).where(eq(roms.id, id));
                     console.log(`[Main] Finalized DB deletion for ROM ${id}`);
                     eventBus.emit('sse-message', { type: 'done', action: 'rom-deleted', id });

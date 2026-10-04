@@ -1,7 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { importRouter } from "../../../apps/api/src/routes/import.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
-import { scannedFiles, roms, systems } from "../../../apps/api/src/db/schema.ts";
+import { scannedFiles, scannedSets, scannedSetFiles, roms, romFiles, systems } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
 
 Deno.test("POST / should require fields", async () => {
@@ -131,5 +131,140 @@ Deno.test("POST / should support single scannedFileId for backward compatibility
         await db.delete(systems).where(eq(systems.id, testSysId));
     }
 });
+
+Deno.test("POST / should import staged multi-file set with rom_files records", async () => {
+    const testSysId = "test-sys-set-" + Date.now();
+    const testTitle = "Final Fantasy VII " + Date.now();
+    await db.insert(systems).values({
+        id: testSysId,
+        name: "PlayStation",
+        slug: "psx-set-" + Date.now(),
+        esFolder: "psx",
+    });
+
+    const setId = "test-set-" + Date.now();
+    const fileId1 = "set-m3u-" + Date.now();
+    const fileId2 = "set-disc1-" + Date.now();
+    const fileId3 = "set-disc2-" + Date.now();
+
+    await db.insert(scannedSets).values({
+        id: setId,
+        name: "Final Fantasy VII",
+        setType: "m3u",
+        basePath: "/roms/psx/FF7",
+        launchFile: "FF7.m3u",
+        totalSize: 1000000000,
+        status: "complete",
+        ignored: false,
+    });
+
+    await db.insert(scannedSetFiles).values([
+        {
+            id: crypto.randomUUID(),
+            setId,
+            relPath: "FF7.m3u",
+            path: `/roms/psx/FF7/FF7.m3u`,
+            filename: "FF7.m3u",
+            size: 200,
+            role: "launch",
+        },
+        {
+            id: crypto.randomUUID(),
+            setId,
+            relPath: "FF7_Disc1.chd",
+            path: `/roms/psx/FF7/FF7_Disc1.chd`,
+            filename: "FF7_Disc1.chd",
+            size: 500000000,
+            role: "disc",
+        },
+        {
+            id: crypto.randomUUID(),
+            setId,
+            relPath: "FF7_Disc2.chd",
+            path: `/roms/psx/FF7/FF7_Disc2.chd`,
+            filename: "FF7_Disc2.chd",
+            size: 499999800,
+            role: "disc",
+        },
+    ]);
+
+    await db.insert(scannedFiles).values([
+        {
+            id: fileId1,
+            filename: "FF7.m3u",
+            path: `/roms/psx/FF7/FF7.m3u`,
+            size: 200,
+            ignored: false,
+            setId,
+            setType: "m3u",
+            role: "launch",
+        },
+        {
+            id: fileId2,
+            filename: "FF7_Disc1.chd",
+            path: `/roms/psx/FF7/FF7_Disc1.chd`,
+            size: 500000000,
+            ignored: false,
+            setId,
+            setType: "m3u",
+            role: "disc",
+        },
+        {
+            id: fileId3,
+            filename: "FF7_Disc2.chd",
+            path: `/roms/psx/FF7/FF7_Disc2.chd`,
+            size: 499999800,
+            ignored: false,
+            setId,
+            setType: "m3u",
+            role: "disc",
+        },
+    ]);
+
+    try {
+        const req = new Request("http://localhost/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                scannedFileIds: [fileId1, fileId2, fileId3],
+                systemId: testSysId,
+                gameData: {
+                    title: testTitle,
+                    year: "1997",
+                },
+            }),
+        });
+
+        const res = await importRouter.request(req);
+        assertEquals(res.status, 200);
+        const result = await res.json();
+        assertEquals(result.status, "success");
+
+        // Verify a single rom set was created in roms
+        const importedRoms = await db.select().from(roms).where(eq(roms.systemId, testSysId));
+        assertEquals(importedRoms.length, 1);
+        const importedSet = importedRoms[0];
+        assertEquals(importedSet.setType, "m3u");
+        assertEquals(importedSet.launchFile, "FF7.m3u");
+
+        // Verify rom_files has all 3 member files
+        const importedFiles = await db.select().from(romFiles).where(eq(romFiles.romId, importedSet.id));
+        assertEquals(importedFiles.length, 3);
+
+        // Verify staging tables were cleaned up
+        const remainingSet = await db.select().from(scannedSets).where(eq(scannedSets.id, setId)).get();
+        assertEquals(remainingSet, undefined);
+        const remainingSetFiles = await db.select().from(scannedSetFiles).where(eq(scannedSetFiles.setId, setId));
+        assertEquals(remainingSetFiles.length, 0);
+    } finally {
+        const importedRoms = await db.select().from(roms).where(eq(roms.systemId, testSysId));
+        for (const r of importedRoms) {
+            await db.delete(romFiles).where(eq(romFiles.romId, r.id));
+        }
+        await db.delete(roms).where(eq(roms.systemId, testSysId));
+        await db.delete(systems).where(eq(systems.id, testSysId));
+    }
+});
+
 
 

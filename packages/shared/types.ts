@@ -5,6 +5,7 @@ export const PlatformSchema = z.object({
   name: z.string(),
   slug: z.string(),
   path: z.string().nullable().optional(),
+  esFolder: z.string().nullable().optional(),
 });
 export type Platform = z.infer<typeof PlatformSchema>;
 
@@ -16,22 +17,57 @@ export const SystemFirmwareSchema = z.object({
   path: z.string(),
   md5: z.string().optional().nullable(),
   crc32: z.string().optional().nullable(),
+  sha1: z.string().optional().nullable(),
   createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 export type SystemFirmware = z.infer<typeof SystemFirmwareSchema>;
+
+export const RomFileRoleSchema = z.enum(["launch", "track", "disc", "descriptor", "aux"]);
+export type RomFileRole = z.infer<typeof RomFileRoleSchema>;
+
+export const RomSetTypeSchema = z.enum(["single", "cue", "gdi", "m3u", "directory"]);
+export type RomSetType = z.infer<typeof RomSetTypeSchema>;
+
+export const RomFileSchema = z.object({
+  id: z.string(),
+  romId: z.string().optional(),
+  relPath: z.string(),
+  path: z.string(),
+  filename: z.string().optional(),
+  size: z.number(),
+  sha1: z.string().optional().nullable(),
+  md5: z.string().optional().nullable(),
+  crc32: z.string().optional().nullable(),
+  role: RomFileRoleSchema.default("launch"),
+  mtime: z.number().optional().nullable(),
+  createdAt: z.string().optional(),
+});
+export type RomFile = z.infer<typeof RomFileSchema>;
 
 export const RomSchema = z.object({
   id: z.string(),
   gameId: z.string().optional(),
   systemId: z.string(),
+  name: z.string().optional().nullable(),
+  setType: RomSetTypeSchema.default("single"),
+  basePath: z.string().optional().nullable(),
+  launchFile: z.string().optional(),
   filename: z.string(),
-  path: z.string(),
+  path: z.string().optional().nullable(),
   size: z.number(),
+  totalSize: z.number().optional(),
+  setHash: z.string().optional().nullable(),
+  status: z.enum(["complete", "incomplete"]).default("complete"),
   region: z.string().optional().nullable(),
   crc32: z.string().optional().nullable(),
   md5: z.string().optional().nullable(),
+  sha1: z.string().optional().nullable(),
   platform: z.string().optional(), // Deprecated in GameRead responses
   pendingDelete: z.boolean().optional().nullable(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  files: z.array(RomFileSchema).optional(),
 });
 export type Rom = z.infer<typeof RomSchema>;
 
