@@ -1,6 +1,7 @@
 import { db } from "./db/index.ts";
 import { roms } from "./db/schema.ts";
 import { eq } from "drizzle-orm";
+import { eventBus } from "./sse.ts";
 
 let deletionWorker: Worker | null = null;
 
@@ -18,9 +19,10 @@ export function getDeletionWorker(): Worker {
                 if (type === 'ROM_DELETED') {
                     await db.delete(roms).where(eq(roms.id, id));
                     console.log(`[Main] Finalized DB deletion for ROM ${id}`);
-                    globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+                    eventBus.emit('sse-message', { type: 'done', action: 'rom-deleted', id });
                 } else if (type === 'GAME_DELETED') {
                     console.log(`[Main] Background file deletion finished for Game ${id}`);
+                    eventBus.emit('sse-message', { type: 'done', action: 'game-deleted', id });
                 }
             } catch (err) {
                 console.error(`[Main] Failed to finalize DB deletion for ${type} ${id}`, err);

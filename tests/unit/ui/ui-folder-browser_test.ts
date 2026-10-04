@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import "../../../packages/ui-components/src/ui-folder-browser/ui-folder-browser.ts";
 import type { UiFolderBrowser } from "../../../packages/ui-components/src/ui-folder-browser/ui-folder-browser.ts";
 

@@ -18,22 +18,27 @@ filesystemRouter.get("/browse", async (c) => {
         if (!stat.isDirectory) {
             targetPath = dirname(targetPath);
         }
-    } catch {
+    } catch (_err) {
         // Fallback to parent or root
         try {
             const parent = dirname(targetPath);
             await Deno.stat(parent);
             targetPath = parent;
-        } catch {
+        } catch (_parentErr) {
             targetPath = "/";
         }
+    }
+
+    const SENSITIVE_PATHS = ["/proc", "/sys", "/dev", "/etc/shadow", "/root/.ssh"];
+    if (SENSITIVE_PATHS.some(p => targetPath === p || targetPath.startsWith(p + "/"))) {
+        targetPath = Deno.cwd();
     }
 
     const directories: Array<{ name: string; path: string }> = [];
 
     try {
         for await (const entry of Deno.readDir(targetPath)) {
-            // Ignore hidden/dot folders if desired, or keep them if needed; let's show all directories but skip hidden like .git
+            // Ignore hidden/dot folders like .git, .ssh
             if (entry.name.startsWith(".")) continue;
 
             if (entry.isDirectory) {
@@ -51,7 +56,7 @@ filesystemRouter.get("/browse", async (c) => {
                             path: normalize(fullPath),
                         });
                     }
-                } catch {
+                } catch (_linkErr) {
                     // Broken symlink or permission issue, skip
                 }
             }
@@ -76,18 +81,24 @@ filesystemRouter.get("/browse", async (c) => {
         try {
             await Deno.stat(homeDir);
             shortcuts.push({ label: "Home (~)", path: normalize(homeDir) });
-        } catch {}
+        } catch (_homeErr) {
+            // Home directory inaccessible
+        }
     }
 
     try {
         await Deno.stat("/mnt");
         shortcuts.push({ label: "/mnt", path: "/mnt" });
-    } catch {}
+    } catch (_mntErr) {
+        // /mnt not present
+    }
 
     try {
         await Deno.stat("/media");
         shortcuts.push({ label: "/media", path: "/media" });
-    } catch {}
+    } catch (_mediaErr) {
+        // /media not present
+    }
 
     shortcuts.push({ label: "Project", path: normalize(Deno.cwd()) });
 

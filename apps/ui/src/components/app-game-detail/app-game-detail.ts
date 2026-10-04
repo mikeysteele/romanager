@@ -574,7 +574,7 @@ export class AppGameDetail extends LitElement {
     const year = extractYear(this.game.released);
 
     return html`
-      ${renderHeroBackground()}
+      ${renderHeroBackground(this.game)}
       
       <div class="content-wrapper">
         <div class="header-nav">

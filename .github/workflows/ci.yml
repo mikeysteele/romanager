@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Lint, Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Node.js (for Drizzle Kit migrations in test pipeline)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify Types
+        run: deno check apps/api/main.ts
+
+      - name: Build UI Bundle
+        run: deno task build:ui
+
+      - name: Run API Tests
+        run: deno task test:api
+
+      - name: Run UI Unit Tests
+        run: deno task test:unit

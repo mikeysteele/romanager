@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import "../../../apps/ui/src/components/app-settings-roms/app-settings-roms.ts";
 import type { AppSettingsRoms } from "../../../apps/ui/src/components/app-settings-roms/app-settings-roms.ts";
 

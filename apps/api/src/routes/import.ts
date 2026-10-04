@@ -19,6 +19,22 @@ importRouter.post("/", async (c) => {
     }
 
     try {
+        // Pre-fetch system if needed outside of transaction to avoid holding DB lock
+        const existingSys = await db.select().from(systems).where(eq(systems.id, systemId)).get();
+        let sysToInsert: { id: string; name: string; slug: string } | null = null;
+        if (!existingSys) {
+            const apiKey = Deno.env.get("RAWG_API_KEY");
+            if (!apiKey) throw new Error("RAWG_API_KEY not configured, cannot create system.");
+            const pRes = await fetch(`https://api.rawg.io/api/platforms/${systemId}?key=${apiKey}`);
+            if (!pRes.ok) throw new Error("Invalid systemId: could not fetch from RAWG.");
+            const pData = await pRes.json();
+            sysToInsert = {
+                id: String(pData.id),
+                name: pData.name,
+                slug: pData.slug
+            };
+        }
+
         await db.transaction(async (tx) => {
             // 1. Get Scanned Files
             const filesToImport = [];
@@ -29,27 +45,15 @@ importRouter.post("/", async (c) => {
             }
 
             // 1.5 Ensure System and Platform Exist Locally
-            let sys = await tx.select().from(systems).where(eq(systems.id, systemId)).get();
-            if (!sys) {
-                // Fetch from RAWG to create it
-                const apiKey = Deno.env.get("RAWG_API_KEY");
-                if (!apiKey) throw new Error("RAWG_API_KEY not configured, cannot create system.");
-                const pRes = await fetch(`https://api.rawg.io/api/platforms/${systemId}?key=${apiKey}`);
-                if (!pRes.ok) throw new Error("Invalid systemId: could not fetch from RAWG.");
-                const pData = await pRes.json();
-                const newSys = {
-                    id: String(pData.id),
-                    name: pData.name,
-                    slug: pData.slug
-                };
-                await tx.insert(systems).values(newSys);
-                sys = { ...newSys, path: null };
+            const currentSys = existingSys || sysToInsert!;
+            if (sysToInsert) {
+                await tx.insert(systems).values(sysToInsert).onConflictDoNothing();
             }
 
             await tx.insert(platforms).values({
-                id: sys.id,
-                name: sys.name,
-                slug: sys.slug
+                id: currentSys.id,
+                name: currentSys.name,
+                slug: currentSys.slug
             }).onConflictDoNothing();
 
             // 2. Resolve Game ID

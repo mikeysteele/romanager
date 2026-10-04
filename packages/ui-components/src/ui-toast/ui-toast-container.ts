@@ -30,12 +30,14 @@ export class UiToastContainer extends LitElement {
 
     override connectedCallback() {
         super.connectedCallback();
-        globalThis.addEventListener('ui-toast-notify', this.handleNotify as EventListener);
+        const target = typeof window !== 'undefined' ? window : globalThis;
+        target.addEventListener('ui-toast-notify', this.handleNotify as EventListener);
     }
 
     override disconnectedCallback() {
         super.disconnectedCallback();
-        globalThis.removeEventListener('ui-toast-notify', this.handleNotify as EventListener);
+        const target = typeof window !== 'undefined' ? window : globalThis;
+        target.removeEventListener('ui-toast-notify', this.handleNotify as EventListener);
     }
 
     private handleNotify = (e: CustomEvent) => {
@@ -69,8 +71,11 @@ export class UiToastContainer extends LitElement {
 
 // Helper function to trigger toasts from anywhere
 export const toast = (message: string, type: ToastType = 'info', duration?: number) => {
-    if (typeof globalThis.dispatchEvent === 'function') {
-        globalThis.dispatchEvent(new CustomEvent('ui-toast-notify', {
+    const target = typeof window !== 'undefined' ? window : globalThis;
+    const targetObj = target as unknown as { CustomEvent?: typeof CustomEvent; dispatchEvent?: (e: Event) => boolean };
+    const EventCtor = targetObj.CustomEvent || CustomEvent;
+    if (typeof targetObj.dispatchEvent === 'function') {
+        targetObj.dispatchEvent(new EventCtor('ui-toast-notify', {
             detail: { message, type, duration }
         }));
     }
@@ -84,4 +89,7 @@ declare global {
 }
 
 // Make it globally available on window for ease of use in non-lit environments if needed
+if (typeof window !== 'undefined') {
+    (window as unknown as { toast?: ToastFn }).toast = toast;
+}
 globalThis.toast = toast;

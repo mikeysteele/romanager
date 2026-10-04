@@ -1,21 +1,22 @@
 
-import createServer from "./src/app.ts";
 import { load } from "@std/dotenv";
 
-// Configuration (could be moved to env or config file)
-const ROMS_DIR = "./roms";
-const APP_DIR = "./apps/ui/www";
-const app = createServer(ROMS_DIR, APP_DIR);
+// Load environment variables before initializing DB and server modules
 await load({
-  // optional: choose a specific path (defaults to ".env")
   envPath: ".env",
-  // optional: also export to the process environment (so Deno.env can read it)
   export: true,
 });
 
-console.log(`Server running on http://localhost:8000`);
-// Only serve if this is the main module
+import createServer from "./src/app.ts";
+
+const ROMS_DIR = Deno.env.get("ROMS_DIR") || "./roms";
+const APP_DIR = Deno.env.get("APP_DIR") || "./apps/ui/dist";
+const PORT = Number(Deno.env.get("PORT")) || 8000;
+
+const app = createServer(ROMS_DIR, APP_DIR);
+
+console.log(`Server running on http://localhost:${PORT}`);
 if (import.meta.main) {
-  Deno.serve({ port: 8000 }, app.fetch);
+  Deno.serve({ port: PORT }, app.fetch);
 }
 

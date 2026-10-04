@@ -39,6 +39,9 @@ Deno.test("DELETE /:id should mark rom as pendingDelete", async () => {
     const romRecord = await db.select().from(roms).where(eq(roms.id, dummyId)).get();
     assertEquals(romRecord?.pendingDelete, true);
     
+    // Wait briefly for deletion worker to finalize
+    await new Promise((r) => setTimeout(r, 60));
+
     // Clean up
     await db.delete(roms).where(eq(roms.id, dummyId));
     await db.delete(games).where(eq(games.id, gameId));

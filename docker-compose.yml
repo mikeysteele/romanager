@@ -1,0 +1,17 @@
+services:
+  romanager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: romanager
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DB_URL=file:/data/romanager.db
+      - ROMS_DIR=/roms
+      - RAWG_API_KEY=${RAWG_API_KEY:-}
+    volumes:
+      - ./data:/data
+      - ./roms:/roms

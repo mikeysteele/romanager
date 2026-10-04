@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { text, integer, sqliteTable, primaryKey } from "drizzle-orm/sqlite-core";
+import { text, integer, sqliteTable, primaryKey, index } from "drizzle-orm/sqlite-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const systems = sqliteTable("systems", {
@@ -22,7 +22,9 @@ export const systemFirmware = sqliteTable("system_firmware", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(CURRENT_TIMESTAMP)`),
-});
+}, (table) => ({
+  systemIdIdx: index("system_firmware_system_id_idx").on(table.systemId),
+}));
 export const insertSystemFirmwareSchema = createInsertSchema(systemFirmware);
 export const selectSystemFirmwareSchema = createSelectSchema(systemFirmware);
 
@@ -57,7 +59,11 @@ export const roms = sqliteTable("roms", {
   pendingDelete: integer("pending_delete", { mode: 'boolean' })
     .notNull()
     .default(false),
-});
+}, (table) => ({
+  gameIdIdx: index("roms_game_id_idx").on(table.gameId),
+  systemIdIdx: index("roms_system_id_idx").on(table.systemId),
+  pendingDeleteIdx: index("roms_pending_delete_idx").on(table.pendingDelete),
+}));
 export const insertRomSchema = createInsertSchema(roms);
 export const selectRomSchema = createSelectSchema(roms);
 
@@ -77,7 +83,9 @@ export const scannedFiles = sqliteTable("scanned_files", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(CURRENT_TIMESTAMP)`),
-});
+}, (table) => ({
+  ignoredIdx: index("scanned_files_ignored_idx").on(table.ignored),
+}));
 export const insertScannedFileSchema = createInsertSchema(scannedFiles);
 export const selectScannedFileSchema = createSelectSchema(scannedFiles);
 
@@ -95,6 +103,7 @@ export const gamePlatforms = sqliteTable("game_platforms", {
 }, (table) => {
   return {
     pk: primaryKey({ columns: [table.gameId, table.platformId] }),
+    platformIdIdx: index("game_platforms_platform_id_idx").on(table.platformId),
   };
 });
 export const insertGamePlatformSchema = createInsertSchema(gamePlatforms);

@@ -1,7 +1,7 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { importRouter } from "../../../apps/api/src/routes/import.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
-import { scannedFiles, roms, games, systems } from "../../../apps/api/src/db/schema.ts";
+import { scannedFiles, roms, systems } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
 
 Deno.test("POST / should require fields", async () => {

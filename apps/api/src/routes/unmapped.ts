@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono, type Context } from "@hono/hono";
 import { db } from "../db/index.ts";
 import { scannedFiles } from "../db/schema.ts";
 import { eq, inArray } from "drizzle-orm";
@@ -49,7 +49,7 @@ unmappedRouter.post("/bulk-ignore", async (c) => {
 });
 
 // Clear all unmapped staged files
-const clearAllUnmapped = async (c: any) => {
+const clearAllUnmapped = async (c: Context) => {
     try {
         await db.delete(scannedFiles);
         return c.json({ success: true, message: "All unmapped files cleared." });
