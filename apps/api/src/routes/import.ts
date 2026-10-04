@@ -133,7 +133,7 @@ importRouter.post("/", async (c) => {
                     await tx.insert(romFiles).values({
                         id: crypto.randomUUID(),
                         romId,
-                        relPath: member.relPath || member.filename,
+                        relPath: ("relPath" in member && member.relPath) ? member.relPath : member.filename,
                         path: member.path,
                         filename: member.filename,
                         size: member.size,
@@ -141,7 +141,7 @@ importRouter.post("/", async (c) => {
                         md5: member.md5,
                         crc32: member.crc32,
                         role: member.role || "launch",
-                        mtime: member.mtime,
+                        mtime: "mtime" in member ? member.mtime : null,
                     }).onConflictDoNothing();
                 }
 

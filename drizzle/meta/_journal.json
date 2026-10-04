@@ -43,6 +43,13 @@
       "when": 1791116090623,
       "tag": "0005_fuzzy_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791116962339,
+      "tag": "0006_solid_talos",
+      "breakpoints": true
     }
   ]
 }
