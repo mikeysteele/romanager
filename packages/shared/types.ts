@@ -133,3 +133,89 @@ export const FileTypeWhitelistSchema = z.object({
 });
 export type FileTypeWhitelist = z.infer<typeof FileTypeWhitelistSchema>;
 
+export const ManifestFileSchema = z.object({
+  id: z.string(),                  // rom_files.id or firmware id; used with /api/sync/files/:id
+  path: z.string(),                // device-relative POSIX path from the ROM root (or BIOS root for firmware)
+  size: z.number(),
+  sha1: z.string(),
+  role: z.enum(["launch", "track", "disc", "descriptor", "aux"]),
+});
+export type ManifestFile = z.infer<typeof ManifestFileSchema>;
+
+export const ManifestSetSchema = z.object({
+  kind: z.enum(["rom", "firmware"]),
+  id: z.string(),                  // roms.id / firmware id
+  gameId: z.string().nullable(),
+  systemId: z.string(),
+  esFolder: z.string(),
+  name: z.string(),
+  setType: z.enum(["single", "cue", "gdi", "m3u", "directory"]),
+  launchPath: z.string(),          // device-relative path ES will show
+  setHash: z.string(),
+  totalSize: z.number(),
+  files: z.array(ManifestFileSchema).min(1),
+  requires: z.array(z.string()).default([]),
+  implicit: z.boolean().default(false),
+});
+export type ManifestSet = z.infer<typeof ManifestSetSchema>;
+
+export const ManifestSchema = z.object({
+  deviceId: z.string(),
+  version: z.string(),
+  generatedAt: z.string(),
+  overBudget: z.boolean(),
+  totalBytes: z.number(),
+  sets: z.array(ManifestSetSchema),
+  warnings: z.array(z.string()),
+});
+export type Manifest = z.infer<typeof ManifestSchema>;
+
+export const DevicePresetSchema = z.enum(["batocera", "esde", "retropie"]);
+export type DevicePreset = z.infer<typeof DevicePresetSchema>;
+
+export const ProfileRuleKindSchema = z.enum([
+  "include_system",
+  "exclude_system",
+  "include_game",
+  "exclude_game",
+  "include_rom",
+  "exclude_rom",
+]);
+export type ProfileRuleKind = z.infer<typeof ProfileRuleKindSchema>;
+
+export const ProfileRuleSchema = z.object({
+  id: z.string().optional(),
+  deviceId: z.string().optional(),
+  position: z.number().default(0),
+  kind: ProfileRuleKindSchema,
+  targetId: z.string(),
+  createdAt: z.string().optional(),
+});
+export type ProfileRule = z.infer<typeof ProfileRuleSchema>;
+
+export const DeviceProfileSchema = z.object({
+  deviceId: z.string().optional(),
+  regionPreference: z.string().default("USA,EUR,JPN"),
+  oneRomPerGame: z.boolean().default(false),
+  includeFirmware: z.boolean().default(true),
+  updatedAt: z.string().optional(),
+  rules: z.array(ProfileRuleSchema).optional(),
+});
+export type DeviceProfile = z.infer<typeof DeviceProfileSchema>;
+
+export const DeviceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  preset: DevicePresetSchema.default("batocera"),
+  storageBudgetBytes: z.number().nullable().optional(),
+  lastSeenAt: z.string().nullable().optional(),
+  lastSyncAt: z.string().nullable().optional(),
+  agentVersion: z.string().nullable().optional(),
+  lastReport: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  profile: DeviceProfileSchema.optional(),
+});
+export type Device = z.infer<typeof DeviceSchema>;
+
+

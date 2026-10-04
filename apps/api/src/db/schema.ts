@@ -209,3 +209,69 @@ export const fileTypeWhitelist = sqliteTable("file_type_whitelist", {
 export const insertFileTypeWhitelistSchema = createInsertSchema(fileTypeWhitelist);
 export const selectFileTypeWhitelistSchema = createSelectSchema(fileTypeWhitelist);
 
+export const devices = sqliteTable("devices", {
+  id: text("id").primaryKey(), // UUID
+  name: text("name").notNull(),
+  preset: text("preset").notNull().default("batocera"), // "batocera" | "esde" | "retropie"
+  storageBudgetBytes: integer("storage_budget_bytes", { mode: 'number' }),
+  lastSeenAt: text("last_seen_at"),
+  lastSyncAt: text("last_sync_at"),
+  agentVersion: text("agent_version"),
+  lastReport: text("last_report"), // JSON string: counts, bytes, errors, free disk
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});
+export const insertDeviceSchema = createInsertSchema(devices);
+export const selectDeviceSchema = createSelectSchema(devices);
+
+export const deviceProfiles = sqliteTable("device_profiles", {
+  deviceId: text("device_id").primaryKey().references(() => devices.id, { onDelete: 'cascade' }),
+  regionPreference: text("region_preference").notNull().default("USA,EUR,JPN"),
+  oneRomPerGame: integer("one_rom_per_game", { mode: 'boolean' }).notNull().default(false),
+  includeFirmware: integer("include_firmware", { mode: 'boolean' }).notNull().default(true),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+});
+export const insertDeviceProfileSchema = createInsertSchema(deviceProfiles);
+export const selectDeviceProfileSchema = createSelectSchema(deviceProfiles);
+
+export const profileRules = sqliteTable("profile_rules", {
+  id: text("id").primaryKey(),
+  deviceId: text("device_id").notNull().references(() => devices.id, { onDelete: 'cascade' }),
+  position: integer("position", { mode: 'number' }).notNull().default(0),
+  kind: text("kind").notNull(), // "include_system" | "exclude_system" | "include_game" | "exclude_game" | "include_rom" | "exclude_rom"
+  targetId: text("target_id").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+}, (table) => ({
+  deviceIdIdx: index("profile_rules_device_id_idx").on(table.deviceId),
+}));
+export const insertProfileRuleSchema = createInsertSchema(profileRules);
+export const selectProfileRuleSchema = createSelectSchema(profileRules);
+
+export const apiKeys = sqliteTable("api_keys", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  prefix: text("prefix").notNull(), // first 8 chars e.g. "rmg_7Fq2"
+  keyHash: text("key_hash").notNull().unique(), // sha256 of full key
+  scope: text("scope").notNull().default("device"), // "device" | "admin"
+  deviceId: text("device_id").references(() => devices.id, { onDelete: 'cascade' }),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(CURRENT_TIMESTAMP)`),
+  lastUsedAt: text("last_used_at"),
+  revokedAt: text("revoked_at"),
+}, (table) => ({
+  prefixIdx: index("api_keys_prefix_idx").on(table.prefix),
+  deviceIdIdx: index("api_keys_device_id_idx").on(table.deviceId),
+}));
+export const insertApiKeySchema = createInsertSchema(apiKeys);
+export const selectApiKeySchema = createSelectSchema(apiKeys);
+
+
