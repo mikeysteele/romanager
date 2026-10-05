@@ -102,6 +102,8 @@ export class UiButton extends LitElement {
     @property({ type: String }) declare type: 'button' | 'submit' | 'reset';
     @property({ type: String }) declare href?: string;
 
+    @property({ type: String }) declare form?: string;
+
     constructor() {
         super();
         this.variant = 'primary';
@@ -111,9 +113,24 @@ export class UiButton extends LitElement {
     }
 
     private clickHandler(e: Event) {
-        if (this.type === 'submit') {
+        if (this.disabled) {
             e.preventDefault();
-            this.closest('FORM')?.dispatchEvent(new Event('submit'))
+            e.stopImmediatePropagation();
+            return;
+        }
+
+        if (this.type === 'submit') {
+            const formId = this.form || this.getAttribute('form');
+            const root = this.getRootNode() as unknown as ParentNode & { getElementById?: (id: string) => Element | null };
+            const form = (formId ? (root.getElementById?.(formId) || root.querySelector?.(`#${formId}`)) : null) || this.closest('form');
+            if (form) {
+                e.preventDefault();
+                if (typeof (form as HTMLFormElement).requestSubmit === 'function') {
+                    (form as HTMLFormElement).requestSubmit();
+                } else {
+                    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                }
+            }
         }
     }
     override render() {

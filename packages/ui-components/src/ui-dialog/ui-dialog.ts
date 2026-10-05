@@ -4,7 +4,12 @@ import { customElement, property, query } from 'lit/decorators.js';
 @customElement('ui-dialog')
 export class UiDialog extends LitElement {
     static override styles = css`
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
         dialog {
+            box-sizing: border-box;
             background: var(--color-bg-secondary, #1e1e1e);
             color: var(--color-text-primary, #ececec);
             border: 1px solid var(--border-color, #444);
@@ -12,8 +17,10 @@ export class UiDialog extends LitElement {
             padding: 0;
             width: calc(100% - var(--spacing-2xl, 48px));
             max-width: var(--ui-dialog-max-width, 500px);
+            max-height: calc(100vh - var(--spacing-2xl, 48px));
             box-shadow: var(--shadow-2xl, 0 25px 50px -12px rgba(0, 0, 0, 0.5));
             transition: opacity 0.2s ease, transform 0.2s ease;
+            overflow: hidden;
         }
         
         dialog::backdrop {
@@ -23,9 +30,13 @@ export class UiDialog extends LitElement {
         }
 
         .container {
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             padding: var(--spacing-xl, 24px);
+            max-height: calc(100vh - var(--spacing-2xl, 48px));
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .header {

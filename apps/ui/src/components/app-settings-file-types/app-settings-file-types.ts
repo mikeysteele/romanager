@@ -8,6 +8,10 @@ import type { FileTypeWhitelist } from '@repo/shared';
 @customElement('app-settings-file-types')
 export class AppSettingsFileTypes extends LitElement {
   static override styles = css`
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
     :host {
         display: block;
         max-width: 860px;
@@ -76,6 +80,7 @@ export class AppSettingsFileTypes extends LitElement {
     }
     input[type="text"] {
         width: 100%;
+        box-sizing: border-box;
         padding: var(--spacing-sm) var(--spacing-md);
         border: 1px solid var(--border-color);
         background: var(--color-bg-tertiary);
@@ -97,6 +102,7 @@ export class AppSettingsFileTypes extends LitElement {
   @state() fileTypes: FileTypeWhitelist[] = [];
   @state() loading: boolean = false;
   @state() isAddDialogOpen: boolean = false;
+  @state() isSubmitting: boolean = false;
 
   @state() newExtension: string = '';
   @state() newMagicNumber: string = '';
@@ -133,12 +139,18 @@ export class AppSettingsFileTypes extends LitElement {
       this.isAddDialogOpen = false;
   }
 
-  async handleAddFileType(e: Event) {
-      e.preventDefault();
+  async handleAddFileType(e?: Event) {
+      if (e) e.preventDefault();
+      if (this.isSubmitting) return;
+
       const ext = this.newExtension.trim().replace(/^\./, '').toLowerCase();
-      if (!ext) return;
+      if (!ext) {
+          toast('File extension is required', 'error');
+          return;
+      }
 
       try {
+          this.isSubmitting = true;
           const payload = {
               extension: ext,
               magicNumber: this.newMagicNumber.trim() ? this.newMagicNumber.trim().toUpperCase() : null,
@@ -163,6 +175,8 @@ export class AppSettingsFileTypes extends LitElement {
       } catch (e) {
           console.error("Failed to add file type:", e);
           toast('Failed to add file type', 'error');
+      } finally {
+          this.isSubmitting = false;
       }
   }
 
@@ -254,14 +268,13 @@ export class AppSettingsFileTypes extends LitElement {
                 </div>
             </form>
 
-            <div slot="footer">
+            <div slot="actions">
                 <ui-button variant="secondary" @click=${this.closeAddDialog}>Cancel</ui-button>
-                <ui-button variant="primary" type="submit" form="add-file-type-form" ?disabled=${!this.newExtension.trim()}>
-                    Save File Type
+                <ui-button variant="primary" type="submit" form="add-file-type-form" @click=${this.handleAddFileType} ?disabled=${!this.newExtension.trim() || this.isSubmitting}>
+                    ${this.isSubmitting ? 'Saving...' : 'Save File Type'}
                 </ui-button>
             </div>
         </ui-dialog>
-      </div>
     `;
   }
 }
