@@ -152,7 +152,7 @@ export class AppSettingsPlatforms extends LitElement {
     }
   }
 
-  async fetchSystems() {
+  fetchSystems() {
     return this.fetchPlatforms();
   }
 

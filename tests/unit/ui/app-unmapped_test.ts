@@ -56,7 +56,11 @@ Deno.test("AppUnmapped: review button opens HTML dialog", async () => {
     
     assertEquals(el.selectedFileForImport?.filename, "mario.nes");
     
-    const appImport = el.shadowRoot?.querySelector("app-import") as any;
+    const appImport = el.shadowRoot?.querySelector("app-import") as HTMLElement & {
+        selectedFile?: { filename: string };
+        selectedFiles: unknown[];
+        updateComplete: Promise<boolean>;
+    };
     assertExists(appImport);
     assertEquals(appImport.selectedFile?.filename, "mario.nes");
     
@@ -114,7 +118,10 @@ Deno.test("AppUnmapped: Group & Review opens import dialog with multiple files",
     el.handleGroupReview();
     await el.updateComplete;
 
-    const appImport = el.shadowRoot?.querySelector("app-import") as any;
+    const appImport = el.shadowRoot?.querySelector("app-import") as HTMLElement & {
+        selectedFiles: unknown[];
+        updateComplete: Promise<boolean>;
+    };
     assertExists(appImport);
     assertEquals(appImport.selectedFiles.length, 2);
 

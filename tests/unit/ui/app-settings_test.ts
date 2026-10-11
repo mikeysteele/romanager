@@ -1,11 +1,11 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@std/assert";
 import "../../../apps/ui/src/components/app-settings-roms/app-settings-roms.ts";
 import type { AppSettingsRoms } from "../../../apps/ui/src/components/app-settings-roms/app-settings-roms.ts";
 
 Deno.test("AppSettingsRoms: fetches settings on load", async () => {
     let fetchedSettings = false;
-    (globalThis as any).fetch = (url: string) => {
+    globalThis.fetch = ((url: string) => {
         if (url === "/api/settings") {
             fetchedSettings = true;
             return Promise.resolve({
@@ -17,7 +17,7 @@ Deno.test("AppSettingsRoms: fetches settings on load", async () => {
             ok: true,
             json: () => Promise.resolve([])
         });
-    };
+    }) as unknown as typeof fetch;
 
     const el = document.createElement("app-settings-roms") as AppSettingsRoms;
     document.body.appendChild(el);
@@ -86,7 +86,7 @@ Deno.test("AppSettingsRoms: clicking browse button opens folder browser", async 
 
     assertEquals(el.isBrowserOpen, true);
 
-    const folderBrowser = el.shadowRoot?.querySelector("ui-folder-browser") as any;
+    const folderBrowser = el.shadowRoot?.querySelector("ui-folder-browser") as HTMLElement & { open: boolean; updateComplete: Promise<boolean> };
     assertEquals(!!folderBrowser, true);
     assertEquals(folderBrowser.open, true);
 

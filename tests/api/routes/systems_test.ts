@@ -3,16 +3,20 @@ import { systemsRouter } from "../../../apps/api/src/routes/systems.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { systems, roms, games, systemFirmware } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
+import { SystemSchema, SystemReadSchema } from "@repo/shared";
+import { z } from "zod";
 
-Deno.test("GET / should return systems with romCount and firmware", async () => {
+Deno.test("GET / should return systems with romCount and firmware complying with SystemReadSchema", async () => {
     const req = new Request("http://localhost/");
     const res = await systemsRouter.request(req);
     assertEquals(res.status, 200);
     const json = await res.json();
     assertEquals(Array.isArray(json), true);
-    if (json.length > 0) {
-        assertEquals(typeof json[0].romCount, "number");
-        assertEquals(Array.isArray(json[0].firmware), true);
+    // Strict schema contract verification on all returned systems
+    const parsed = z.array(SystemReadSchema).parse(json);
+    if (parsed.length > 0) {
+        assertEquals(typeof parsed[0].romCount, "number");
+        assertEquals(Array.isArray(parsed[0].firmware), true);
     }
 });
 
@@ -22,7 +26,7 @@ Deno.test("GET /:slug should handle not found", async () => {
     assertEquals(res.status, 404);
 });
 
-Deno.test("POST / and DELETE /:id allows deleting systems with 0 ROMs", async () => {
+Deno.test("POST / and DELETE /:id allows deleting systems with 0 ROMs conforming to SystemSchema", async () => {
     const testSysId = "test-sys-delete-" + Date.now();
     const testSysName = "Deletable Console " + Date.now();
     const testSysSlug = "deletable-console-" + Date.now();
@@ -41,7 +45,8 @@ Deno.test("POST / and DELETE /:id allows deleting systems with 0 ROMs", async ()
     const createRes = await systemsRouter.request(createReq);
     assertEquals(createRes.status, 200);
     const createJson = await createRes.json();
-    const actualSysId = createJson.system.id;
+    const createdSystem = SystemSchema.parse(createJson.system);
+    const actualSysId = createdSystem.id;
 
     // Add dummy firmware mapped to this system
     const fwId = "fw-del-" + Date.now();
@@ -60,7 +65,8 @@ Deno.test("POST / and DELETE /:id allows deleting systems with 0 ROMs", async ()
     assertEquals(deleteRes.status, 200);
     const deleteJson = await deleteRes.json();
     assertEquals(deleteJson.status, "success");
-    assertEquals(deleteJson.deletedSystem.id, actualSysId);
+    const deletedSystem = SystemSchema.parse(deleteJson.deletedSystem);
+    assertEquals(deletedSystem.id, actualSysId);
 
     // Verify it is gone from database
     const sysInDb = await db.select().from(systems).where(eq(systems.id, actualSysId)).get();
@@ -142,7 +148,8 @@ Deno.test("PATCH /:id updates esFolder and name", async () => {
         const res = await systemsRouter.request(req);
         assertEquals(res.status, 200);
         const data = await res.json();
-        assertEquals(data.esFolder, "snes");
+        const patchedSystem = SystemSchema.parse(data);
+        assertEquals(patchedSystem.esFolder, "snes");
 
         const inDb = await db.select().from(systems).where(eq(systems.id, sysId)).get();
         assertEquals(inDb?.esFolder, "snes");

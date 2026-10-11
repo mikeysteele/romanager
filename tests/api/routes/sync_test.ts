@@ -1,11 +1,10 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@std/assert";
 import { syncRouter } from "../../../apps/api/src/routes/sync.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import {
   devices,
   deviceProfiles,
   profileRules,
-  apiKeys,
   systems,
   games,
   roms,

@@ -1,6 +1,6 @@
 import { dirname, resolve } from "@std/path";
 import { ensureDir } from "@std/fs";
-import type { Manifest, ManifestFile } from "@repo/shared";
+import type { Manifest } from "@repo/shared";
 import type { CliConfig } from "./config.ts";
 import { saveState, type CliState, type StateSetRecord } from "./state.ts";
 import { type SyncPlan, type PlanItem, getFreeDiskBytes } from "./planner.ts";
@@ -118,7 +118,7 @@ export async function executeSyncPlan(
       // Download needed files into staging
       for (const f of item.filesToDownload) {
         const stagedTarget = resolve(stagingDir, f.path);
-        await apiClient.downloadFile(f.id, stagedTarget, f.sha1, (bytes) => {
+        await apiClient.downloadFile(f.id, stagedTarget, f.sha1, (_bytes) => {
           // progress callback if needed
         });
       }

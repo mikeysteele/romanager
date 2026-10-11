@@ -1,17 +1,18 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@std/assert";
+import type { GameRead } from "@repo/shared";
 import "../../../apps/ui/src/components/app-library/app-library.ts";
 import type { AppLibrary } from "../../../apps/ui/src/components/app-library/app-library.ts";
 
 Deno.test("AppLibrary: fetches all games on load", async () => {
     let fetchedUrl = "";
-    (globalThis as any).fetch = (url: string) => {
+    globalThis.fetch = ((url: string) => {
         fetchedUrl = url;
         return Promise.resolve({
             ok: true,
             json: () => Promise.resolve([{ id: "1", name: "Super Mario" }])
         });
-    };
+    }) as unknown as typeof fetch;
 
     const el = document.createElement("app-library") as AppLibrary;
     document.body.appendChild(el);
@@ -29,9 +30,9 @@ Deno.test("AppLibrary: fetches all games on load", async () => {
 Deno.test("AppLibrary: filters games locally", () => {
     const el = document.createElement("app-library") as AppLibrary;
     el.games = [
-        { id: "1", name: "Super Mario World", slug: "" } as any,
-        { id: "2", name: "Zelda A Link to the Past", slug: "" } as any,
-        { id: "3", name: "Zelda Ocarina of Time", slug: "" } as any,
+        { id: "1", name: "Super Mario World", slug: "" } as unknown as GameRead,
+        { id: "2", name: "Zelda A Link to the Past", slug: "" } as unknown as GameRead,
+        { id: "3", name: "Zelda Ocarina of Time", slug: "" } as unknown as GameRead,
     ];
 
     el.filterQuery = "zelda";

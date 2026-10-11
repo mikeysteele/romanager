@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "@std/assert";
 import { createSettingsRouter } from "../../../apps/api/src/routes/settings.ts";
 
 Deno.test("GET / should return settings", async () => {

@@ -6,7 +6,7 @@ Deno.test("DataTable: renders empty state when no columns", async () => {
     // Ensure JSDOM is setup before loading Lit elements
     await import("../../../packages/ui-components/src/data-table/data-table.ts");
     
-    const el = document.createElement('data-table') as DataTable<any>;
+    const el = document.createElement('data-table') as DataTable<{ id: string } & Record<string, unknown>>;
     document.body.appendChild(el);
     await el.updateComplete;
     
@@ -19,9 +19,9 @@ Deno.test("DataTable: renders empty state when no columns", async () => {
 });
 
 Deno.test("DataTable: renders empty state when no data", async () => {
-    const el = document.createElement('data-table') as DataTable<any>;
+    const el = document.createElement('data-table') as DataTable<{ id: string } & Record<string, unknown>>;
     document.body.appendChild(el);
-    el.columns = [{ header: "Name", key: "name" }] as ColumnDef<any>[];
+    el.columns = [{ header: "Name", key: "name" }] as ColumnDef<{ id: string } & Record<string, unknown>>[];
     await el.updateComplete;
     
     // Extra cycle for data change

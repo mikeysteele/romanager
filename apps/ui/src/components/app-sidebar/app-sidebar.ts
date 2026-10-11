@@ -63,7 +63,7 @@ export class AppSidebar extends LitElement {
     }
   }
 
-  async fetchSystems() {
+  fetchSystems() {
     return this.fetchPlatforms();
   }
 
@@ -241,16 +241,11 @@ export class AppSidebar extends LitElement {
       return this.currentPath.startsWith(href);
   }
 
-  renderNavItem(item: NavItem, siblings: NavItem[], level: number = 0): TemplateResult {
+  renderNavItem(item: NavItem, _siblings: NavItem[], level: number = 0): TemplateResult {
       const hasChildren = item.children && item.children.length > 0;
       const expanded = this.isExpanded(item.id);
       const active = this.isActive(item.href);
       
-      // Get IDs of all siblings that are parents (candidates for toggling)
-      const siblingIds = siblings
-        .filter(sib => sib.children && sib.children.length > 0)
-        .map(sib => sib.id);
-
       const handleToggle = () => {
           this.toggle(item.id, []);
       };

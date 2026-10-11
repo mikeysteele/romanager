@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "@std/assert";
 import "../../../apps/ui/src/components/app-header/app-header.ts";
 import type { AppHeader } from "../../../apps/ui/src/components/app-header/app-header.ts";
 

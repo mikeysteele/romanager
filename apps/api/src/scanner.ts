@@ -1,16 +1,5 @@
-import { walk } from "@std/fs";
-import { normalize as normalizePath } from "@std/path";
-import { db } from "./db/index.ts";
-import { roms, scannedFiles, fileTypeWhitelist } from "./db/schema.ts";
-import { eq, inArray } from "drizzle-orm";
 import type { Rom } from "@repo/shared";
-import { seedDefaultFileTypeWhitelist, DEFAULT_FILE_TYPES } from "./db/queries.ts";
-
-interface FoundRom {
-    filename: string;
-    path: string;
-    size: number;
-}
+import { scanRomsWithSets } from "./scanner-sets.ts";
 
 export async function verifyFileAgainstWhitelist(
     filePath: string,
@@ -71,8 +60,6 @@ export async function verifyFileAgainstWhitelist(
         return false;
     }
 }
-
-import { scanRomsWithSets } from "./scanner-sets.ts";
 
 export async function scanRoms(rootDir: string, onProgress?: (info: { count: number, currentFile: string }) => void): Promise<Rom[]> {
   return await scanRomsWithSets(rootDir, onProgress);

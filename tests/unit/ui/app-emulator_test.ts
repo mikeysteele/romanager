@@ -1,17 +1,17 @@
 import "./setup.ts";
-import { assertEquals, assertExists } from "jsr:@std/assert@^0.217.0";
+import { assertEquals, assertExists } from "@std/assert";
 import "../../../apps/ui/src/components/app-emulator/app-emulator.ts";
 import type { AppEmulator } from "../../../apps/ui/src/components/app-emulator/app-emulator.ts";
 
 Deno.test("AppEmulator: fetches rom data and displays toolbar", async () => {
     let fetchedUrl = "";
-    (globalThis as any).fetch = (url: string) => {
+    globalThis.fetch = ((url: string) => {
         fetchedUrl = url;
         return Promise.resolve({
             ok: true,
             json: () => Promise.resolve({ id: "123", filename: "mario.nes", platform: "nes" })
         });
-    };
+    }) as unknown as typeof fetch;
 
     const el = document.createElement("app-emulator") as AppEmulator;
     el.gameId = "123";

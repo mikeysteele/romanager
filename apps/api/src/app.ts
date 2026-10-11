@@ -64,12 +64,20 @@ export default function createServer(romsDir: string, appDir: string) {
         root: appDir,
         getContent: async (path, c) => {
             try {
-                // ... logging removed for terseness or keep it if debug needed
                 return await Deno.readFile(path);
             } catch (e) {
                 if (e instanceof Deno.errors.IsADirectory) {
                     try {
                         const indexPath = path.endsWith("/") ? `${path}index.html` : `${path}/index.html`;
+                        const data = await Deno.readFile(indexPath);
+                        return c.body(data, 200, { "Content-Type": "text/html" });
+                    } catch {
+                        return null;
+                    }
+                }
+                if (e instanceof Deno.errors.NotFound) {
+                    try {
+                        const indexPath = `${appDir}/index.html`;
                         const data = await Deno.readFile(indexPath);
                         return c.body(data, 200, { "Content-Type": "text/html" });
                     } catch {

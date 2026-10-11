@@ -33,8 +33,8 @@ Deno.test("keysRouter: list, create, and revoke API keys", async () => {
     const listReq = new Request("http://localhost/");
     const listRes = await keysRouter.request(listReq);
     assertEquals(listRes.status, 200);
-    const listData = await listRes.json();
-    const found = listData.find((k: any) => k.id === keyId);
+    const listData = await listRes.json() as Array<{ id: string; rawKey?: string; keyHash?: string; prefix?: string }>;
+    const found = listData.find((k) => k.id === keyId);
     assertEquals(found !== undefined, true);
     assertEquals(found.rawKey, undefined);
     assertEquals(found.keyHash, undefined);

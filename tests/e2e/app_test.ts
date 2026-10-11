@@ -1,5 +1,5 @@
-import { chromium } from "npm:playwright";
-import { assert } from "jsr:@std/assert";
+import { chromium } from "playwright";
+import { assert } from "@std/assert";
 
 Deno.test({
   name: "E2E: Home page loads",

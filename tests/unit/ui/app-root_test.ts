@@ -1,15 +1,15 @@
 import "./setup.ts";
-import { assertEquals, assertExists } from "jsr:@std/assert";
+import { assertExists } from "@std/assert";
 import "../../../apps/ui/src/components/app-root/app-root.ts";
 import type { AppRoot } from "../../../apps/ui/src/components/app-root/app-root.ts";
 
 Deno.test("AppRoot: renders layout components", async () => {
     // Mock EventSource
     class MockEventSource {
-        onmessage: any;
+        onmessage: ((ev: MessageEvent) => void) | null = null;
         constructor() {}
     }
-    (globalThis as any).EventSource = MockEventSource;
+    (globalThis as unknown as { EventSource: unknown }).EventSource = MockEventSource;
 
     const el = document.createElement("app-root") as AppRoot;
     document.body.appendChild(el);

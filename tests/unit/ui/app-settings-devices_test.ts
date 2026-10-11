@@ -1,11 +1,11 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@std/assert";
 import "../../../apps/ui/src/components/app-settings-devices/app-settings-devices.ts";
 import type { AppSettingsDevices } from "../../../apps/ui/src/components/app-settings-devices/app-settings-devices.ts";
 
 Deno.test("AppSettingsDevices: fetches devices on load and renders cards", async () => {
   let fetchedDevices = false;
-  (globalThis as any).fetch = (url: string) => {
+  globalThis.fetch = ((url: string) => {
     if (url === "/api/devices") {
       fetchedDevices = true;
       return Promise.resolve({
@@ -34,7 +34,7 @@ Deno.test("AppSettingsDevices: fetches devices on load and renders cards", async
       ok: true,
       json: () => Promise.resolve([]),
     });
-  };
+  }) as unknown as typeof fetch;
 
   const el = document.createElement("app-settings-devices") as AppSettingsDevices;
   document.body.appendChild(el);
@@ -56,12 +56,12 @@ Deno.test("AppSettingsDevices: fetches devices on load and renders cards", async
 });
 
 Deno.test("AppSettingsDevices: renders empty state when no devices enrolled", async () => {
-  (globalThis as any).fetch = () => {
+  globalThis.fetch = (() => {
     return Promise.resolve({
       ok: true,
       json: () => Promise.resolve([]),
     });
-  };
+  }) as unknown as typeof fetch;
 
   const el = document.createElement("app-settings-devices") as AppSettingsDevices;
   document.body.appendChild(el);

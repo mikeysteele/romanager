@@ -1,7 +1,7 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@std/assert";
 import { devicesRouter } from "../../../apps/api/src/routes/devices.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
-import { devices, deviceProfiles, saveFiles, saveVersions } from "../../../apps/api/src/db/schema.ts";
+import { devices, deviceProfiles } from "../../../apps/api/src/db/schema.ts";
 import { createApiKeyRecord } from "../../../apps/api/src/auth.ts";
 import { eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
@@ -86,7 +86,6 @@ Deno.test("saves: upload, versioning, deduplication, and restore", async () => {
     assertEquals(putV2Res.status, 201);
     const putV2Data = await putV2Res.json();
     assertEquals(putV2Data.status, "uploaded");
-    const v2Id = putV2Data.versionId;
 
     // 6. List saves should now show 1 save file with 2 versions
     const listReq2 = new Request("http://localhost/me/saves", {

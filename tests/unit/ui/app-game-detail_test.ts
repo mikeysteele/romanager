@@ -1,11 +1,11 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@std/assert";
 import "../../../apps/ui/src/components/app-game-detail/app-game-detail.ts";
 import type { AppGameDetail } from "../../../apps/ui/src/components/app-game-detail/app-game-detail.ts";
 
 Deno.test("AppGameDetail: fetches game by routing params", async () => {
     let fetchedUrl = "";
-    (globalThis as any).fetch = (url: string) => {
+    globalThis.fetch = ((url: string) => {
         fetchedUrl = url;
         return Promise.resolve({
             ok: true,
@@ -21,7 +21,7 @@ Deno.test("AppGameDetail: fetches game by routing params", async () => {
                 }]
             }])
         });
-    };
+    }) as unknown as typeof fetch;
 
     const el = document.createElement("app-game-detail") as AppGameDetail;
     el.gameSlug = "super-mario-world";

@@ -88,7 +88,7 @@ export async function main(args: string[] = Deno.args): Promise<void> {
           ...globalOpts,
           dryRun: true,
           system: flags.system,
-          only: flags.only as any,
+          only: flags.only as ("roms" | "bios" | "saves" | undefined),
         });
         break;
 
@@ -97,7 +97,7 @@ export async function main(args: string[] = Deno.args): Promise<void> {
           ...globalOpts,
           dryRun: flags["dry-run"],
           system: flags.system,
-          only: flags.only as any,
+          only: flags.only as ("roms" | "bios" | "saves" | undefined),
         });
         break;
 

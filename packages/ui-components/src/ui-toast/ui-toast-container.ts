@@ -78,12 +78,12 @@ export function toast(message: string, type?: ToastType, duration?: number): voi
 export function toast(messageOrConf: string | ToastConfig, type?: ToastType, duration?: number) {
     const target = typeof window !== 'undefined' ? window : globalThis;
     const targetObj = target as unknown as { CustomEvent?: typeof CustomEvent; dispatchEvent?: (e: Event) => boolean };
-    const EventCtor = targetObj.CustomEvent || (typeof CustomEvent !== 'undefined' ? CustomEvent : Event);
+    const EventCtor = (targetObj.CustomEvent || (typeof CustomEvent !== 'undefined' ? CustomEvent : Event)) as unknown as new (type: string, init?: CustomEventInit) => Event;
     const message = typeof messageOrConf === 'string' ? messageOrConf : messageOrConf.message;
     type = (typeof messageOrConf === 'string' ? type : messageOrConf.type) ?? 'info';
     duration = typeof messageOrConf === 'string' ? duration : messageOrConf.duration;
     if (typeof targetObj.dispatchEvent === 'function') {
-        targetObj.dispatchEvent(new (EventCtor as any)('ui-toast-notify', {
+        targetObj.dispatchEvent(new EventCtor('ui-toast-notify', {
             detail: typeof messageOrConf === 'string' ? { message, type, duration } : messageOrConf
         }));
     }

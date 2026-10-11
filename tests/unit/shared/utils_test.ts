@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "@std/assert";
 import { normalizePath, getPlatformFromFilename } from "../../../packages/shared/mod.ts";
 
 Deno.test("normalizePath should replace backslashes with slashes", () => {

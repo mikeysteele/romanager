@@ -1,4 +1,4 @@
-import { dirname, join, relative, basename } from "@std/path";
+import { dirname, join, relative } from "@std/path";
 
 export interface ParsedDescriptorFile {
   relPath: string; // path referenced inside descriptor

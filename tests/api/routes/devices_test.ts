@@ -3,17 +3,18 @@ import { devicesRouter } from "../../../apps/api/src/routes/devices.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import {
   devices,
-  deviceProfiles,
-  profileRules,
-  apiKeys,
-  systems,
-  games,
-  roms,
-  romFiles,
+
 } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
+import {
+  DeviceSchema,
+  DeviceProfileSchema,
+  ProfileRuleSchema,
+  ManifestSchema,
+} from "@repo/shared";
+import { z } from "zod";
 
-Deno.test("devicesRouter: CRUD and Companion flow", async () => {
+Deno.test("devicesRouter: CRUD and Companion flow with API contract verification", async () => {
   const timestamp = Date.now();
   const devName = `Batocera Handheld ${timestamp}`;
 
@@ -36,9 +37,12 @@ Deno.test("devicesRouter: CRUD and Companion flow", async () => {
   assertEquals(createRes.status, 201);
   const createData = await createRes.json();
 
-  assertEquals(createData.device.name, devName);
-  assertEquals(createData.device.preset, "batocera");
-  assertEquals(createData.profile.oneRomPerGame, true);
+  // Strict API contract validation
+  const parsedCreatedDev = DeviceSchema.parse(createData.device);
+  const parsedCreatedProfile = DeviceProfileSchema.parse(createData.profile);
+  assertEquals(parsedCreatedDev.name, devName);
+  assertEquals(parsedCreatedDev.preset, "batocera");
+  assertEquals(parsedCreatedProfile.oneRomPerGame, true);
   assertEquals(typeof createData.apiKey.rawKey, "string");
   assertEquals(createData.apiKey.rawKey.startsWith("rmg_"), true);
 
@@ -46,22 +50,24 @@ Deno.test("devicesRouter: CRUD and Companion flow", async () => {
   const rawKey = createData.apiKey.rawKey;
 
   try {
-    // 2. GET / should include our created device
+    // 2. GET / should include our created device and satisfy z.array(DeviceSchema)
     const listReq = new Request("http://localhost/");
     const listRes = await devicesRouter.request(listReq);
     assertEquals(listRes.status, 200);
     const listData = await listRes.json();
-    const found = listData.find((d: any) => d.id === deviceId);
+    const parsedDevices = z.array(DeviceSchema).parse(listData);
+    const found = parsedDevices.find((d) => d.id === deviceId);
     assertEquals(found !== undefined, true);
-    assertEquals(found.name, devName);
+    assertEquals(found?.name, devName);
 
-    // 3. GET /:id should return device with profile and rules
+    // 3. GET /:id should return device with profile and rules conforming to DeviceSchema
     const getReq = new Request(`http://localhost/${deviceId}`);
     const getRes = await devicesRouter.request(getReq);
     assertEquals(getRes.status, 200);
     const getData = await getRes.json();
-    assertEquals(getData.id, deviceId);
-    assertEquals(getData.profile.regionPreference, "USA,EUR,JPN");
+    const parsedGetDev = DeviceSchema.parse(getData);
+    assertEquals(parsedGetDev.id, deviceId);
+    assertEquals(parsedGetDev.profile?.regionPreference, "USA,EUR,JPN");
 
     // 4. PUT /:id/rules to set profile rules
     const putRulesReq = new Request(`http://localhost/${deviceId}/rules`, {
@@ -77,21 +83,23 @@ Deno.test("devicesRouter: CRUD and Companion flow", async () => {
     const putRulesRes = await devicesRouter.request(putRulesReq);
     assertEquals(putRulesRes.status, 200);
     const rulesData = await putRulesRes.json();
-    assertEquals(rulesData.rules.length, 2);
+    const parsedRules = z.array(ProfileRuleSchema).parse(rulesData.rules);
+    assertEquals(parsedRules.length, 2);
 
     // 5. Companion endpoint GET /me without auth should fail 401
     const unauthReq = new Request("http://localhost/me");
     const unauthRes = await devicesRouter.request(unauthReq);
     assertEquals(unauthRes.status, 401);
 
-    // 6. Companion endpoint GET /me with valid Bearer key should succeed
+    // 6. Companion endpoint GET /me with valid Bearer key should succeed conforming to DeviceSchema
     const authReq = new Request("http://localhost/me", {
       headers: { Authorization: `Bearer ${rawKey}` },
     });
     const authRes = await devicesRouter.request(authReq);
     assertEquals(authRes.status, 200);
     const authData = await authRes.json();
-    assertEquals(authData.device.id, deviceId);
+    const parsedAuthDev = DeviceSchema.parse(authData.device);
+    assertEquals(parsedAuthDev.id, deviceId);
     assertEquals(authData.serverVersion, "1.0.0");
 
     // 7. Companion endpoint POST /me/report
@@ -114,15 +122,16 @@ Deno.test("devicesRouter: CRUD and Companion flow", async () => {
     assertEquals(devInDb?.agentVersion, "0.1.0");
     assertNotEquals(devInDb?.lastReport, null);
 
-    // 8. Companion endpoint GET /me/manifest
+    // 8. Companion endpoint GET /me/manifest conforming strictly to ManifestSchema
     const manifestReq = new Request("http://localhost/me/manifest", {
       headers: { Authorization: `Bearer ${rawKey}` },
     });
     const manifestRes = await devicesRouter.request(manifestReq);
     assertEquals(manifestRes.status, 200);
     const manifestData = await manifestRes.json();
-    assertEquals(manifestData.deviceId, deviceId);
-    assertEquals(typeof manifestData.version, "string");
+    const parsedManifest = ManifestSchema.parse(manifestData);
+    assertEquals(parsedManifest.deviceId, deviceId);
+    assertEquals(typeof parsedManifest.version, "string");
     const etag = manifestRes.headers.get("etag");
     assertNotEquals(etag, null);
 
@@ -136,14 +145,15 @@ Deno.test("devicesRouter: CRUD and Companion flow", async () => {
     const notModifiedRes = await devicesRouter.request(notModifiedReq);
     assertEquals(notModifiedRes.status, 304);
 
-    // 10. Manifest Preview GET /:id/manifest/preview
+    // 10. Manifest Preview GET /:id/manifest/preview conforming strictly to ManifestSchema
     const previewReq = new Request(`http://localhost/${deviceId}/manifest/preview`);
     const previewRes = await devicesRouter.request(previewReq);
     assertEquals(previewRes.status, 200);
     const previewData = await previewRes.json();
-    assertEquals(previewData.deviceId, deviceId);
+    const parsedPreview = ManifestSchema.parse(previewData);
+    assertEquals(parsedPreview.deviceId, deviceId);
 
-    // 11. PATCH /:id updates device name
+    // 11. PATCH /:id updates device name and validates against DeviceSchema
     const patchReq = new Request(`http://localhost/${deviceId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -157,7 +167,8 @@ Deno.test("devicesRouter: CRUD and Companion flow", async () => {
     const patchRes = await devicesRouter.request(patchReq);
     assertEquals(patchRes.status, 200);
     const patchData = await patchRes.json();
-    assertEquals(patchData.device.name, `${devName} Renamed`);
+    const parsedPatchedDev = DeviceSchema.parse(patchData.device);
+    assertEquals(parsedPatchedDev.name, `${devName} Renamed`);
     assertEquals(patchData.profile.oneRomPerGame, false);
   } finally {
     // 12. Cleanup via DELETE /:id

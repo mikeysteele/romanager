@@ -3,13 +3,12 @@ import { normalize as normalizePath, dirname, basename, relative } from "@std/pa
 import { db } from "./db/index.ts";
 import {
   roms,
-  romFiles,
   scannedFiles,
   scannedSets,
   scannedSetFiles,
   fileTypeWhitelist
 } from "./db/schema.ts";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { Rom } from "@repo/shared";
 import { seedDefaultFileTypeWhitelist, DEFAULT_FILE_TYPES } from "./db/queries.ts";
 import { verifyFileAgainstWhitelist } from "./scanner.ts";
@@ -415,7 +414,6 @@ export async function scanRomsWithSets(
 
   for (const dSet of allDiscoveredSets) {
     const launchPath = `${dSet.basePath}/${dSet.launchFile}`;
-    const allPaths = dSet.files.filter(f => f.exists).map(f => f.path);
 
     // Check if launch file or paths already exist in DB
     const [existingRom, existingScannedSet, existingScannedFile] = await Promise.all([

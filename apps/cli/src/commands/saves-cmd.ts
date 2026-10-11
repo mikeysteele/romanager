@@ -152,7 +152,7 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
     // Check if local file exists
     let localExists = false;
     try {
-      const stat = await Deno.stat(localPath);
+      await Deno.stat(localPath);
       localExists = true;
 
       if (!options.force) {

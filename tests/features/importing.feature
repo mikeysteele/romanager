@@ -16,6 +16,9 @@ Feature: File Importing
 
   Scenario: Auto-mapping based on folder name
     Given I have a file located at "/roms/snes/mario.sfc"
+    When I scan the "/roms" directory
+    Then the game "mario.sfc" should be found
+
   Scenario: Scan triggers library update
     Given I am on the settings page
     When I set the ROMs directory to "/tmp/roms"
@@ -24,5 +27,6 @@ Feature: File Importing
     # We can't easily wait for background process in UI test without polling or SSE
     # But we can verify the backend state or just wait a bit
     And I wait for the "roms-updated" event
+    When I navigate to the library page
     Then I should be on the library page
     And I should see "SNES" in the systems list

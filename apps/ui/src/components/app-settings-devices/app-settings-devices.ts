@@ -566,7 +566,7 @@ export class AppSettingsDevices extends LitElement {
                     required
                     placeholder="e.g. Living Room Batocera"
                     .value=${this.newDeviceName}
-                    @input=${(e: any) => (this.newDeviceName = e.target.value)}
+                    @input=${(e: Event) => (this.newDeviceName = (e.target as HTMLInputElement).value)}
                   />
                 </div>
 
@@ -574,7 +574,7 @@ export class AppSettingsDevices extends LitElement {
                   <label>Frontend Preset</label>
                   <select
                     .value=${this.newDevicePreset}
-                    @change=${(e: any) => (this.newDevicePreset = e.target.value)}
+                    @change=${(e: Event) => (this.newDevicePreset = (e.target as HTMLSelectElement).value as 'batocera' | 'esde' | 'retropie')}
                   >
                     <option value="batocera">Batocera (/userdata/roms)</option>
                     <option value="esde">ES-DE (~/ROMs)</option>
@@ -590,7 +590,10 @@ export class AppSettingsDevices extends LitElement {
                     min="0"
                     placeholder="Leave empty for unlimited"
                     .value=${this.newDeviceBudgetGb || ''}
-                    @input=${(e: any) => (this.newDeviceBudgetGb = e.target.value ? Number(e.target.value) : null)}
+                    @input=${(e: Event) => {
+                      const val = (e.target as HTMLInputElement).value;
+                      this.newDeviceBudgetGb = val ? Number(val) : null;
+                    }}
                   />
                 </div>
 
@@ -617,7 +620,7 @@ export class AppSettingsDevices extends LitElement {
               </p>
 
               <div class="code-box">
-                romanager-sync init --server ${window.location.origin} --key ${this.enrolledKey}
+                romanager-sync init --server ${globalThis.location.origin} --key ${this.enrolledKey}
               </div>
 
               <div style="display:flex; justify-content:space-between; margin-top:20px;">
@@ -625,7 +628,7 @@ export class AppSettingsDevices extends LitElement {
                   variant="secondary"
                   @click=${() =>
                     this.copyToClipboard(
-                      `romanager-sync init --server ${window.location.origin} --key ${this.enrolledKey}`
+                      `romanager-sync init --server ${globalThis.location.origin} --key ${this.enrolledKey}`
                     )}
                 >
                   📋 Copy Command
@@ -650,7 +653,7 @@ export class AppSettingsDevices extends LitElement {
                     type="text"
                     required
                     .value=${this.editingDevice.name}
-                    @input=${(e: any) => (this.editingDevice!.name = e.target.value)}
+                    @input=${(e: Event) => (this.editingDevice!.name = (e.target as HTMLInputElement).value)}
                   />
                 </div>
 
@@ -661,7 +664,7 @@ export class AppSettingsDevices extends LitElement {
                       type="text"
                       placeholder="USA,EUR,JPN"
                       .value=${this.editRegionPref}
-                      @input=${(e: any) => (this.editRegionPref = e.target.value)}
+                      @input=${(e: Event) => (this.editRegionPref = (e.target as HTMLInputElement).value)}
                     />
                   </div>
 
@@ -673,8 +676,10 @@ export class AppSettingsDevices extends LitElement {
                       min="0"
                       placeholder="Unlimited"
                       .value=${this.editBudgetGb || ''}
-                      @input=${(e: any) =>
-                        (this.editBudgetGb = e.target.value ? Number(e.target.value) : null)}
+                      @input=${(e: Event) => {
+                        const val = (e.target as HTMLInputElement).value;
+                        this.editBudgetGb = val ? Number(val) : null;
+                      }}
                     />
                   </div>
                 </div>
@@ -684,7 +689,7 @@ export class AppSettingsDevices extends LitElement {
                     type="checkbox"
                     id="oneRom"
                     .checked=${this.editOneRomPerGame}
-                    @change=${(e: any) => (this.editOneRomPerGame = e.target.checked)}
+                    @change=${(e: Event) => (this.editOneRomPerGame = (e.target as HTMLInputElement).checked)}
                   />
                   <label for="oneRom">One ROM Per Game (deduplicate versions by region preference)</label>
                 </div>
@@ -694,7 +699,7 @@ export class AppSettingsDevices extends LitElement {
                     type="checkbox"
                     id="includeFw"
                     .checked=${this.editIncludeFirmware}
-                    @change=${(e: any) => (this.editIncludeFirmware = e.target.checked)}
+                    @change=${(e: Event) => (this.editIncludeFirmware = (e.target as HTMLInputElement).checked)}
                   />
                   <label for="includeFw">Include BIOS & System Firmware</label>
                 </div>
@@ -728,7 +733,7 @@ export class AppSettingsDevices extends LitElement {
                   <select
                     style="flex:1;"
                     .value=${this.newRuleKind}
-                    @change=${(e: any) => (this.newRuleKind = e.target.value)}
+                    @change=${(e: Event) => (this.newRuleKind = (e.target as HTMLSelectElement).value as ProfileRule['kind'])}
                   >
                     <option value="include_system">Include System (target = systemId)</option>
                     <option value="exclude_system">Exclude System (target = systemId)</option>
@@ -742,7 +747,7 @@ export class AppSettingsDevices extends LitElement {
                     style="flex:1;"
                     placeholder="Target ID"
                     .value=${this.newRuleTargetId}
-                    @input=${(e: any) => (this.newRuleTargetId = e.target.value)}
+                    @input=${(e: Event) => (this.newRuleTargetId = (e.target as HTMLInputElement).value)}
                   />
                   <ui-button variant="secondary" size="small" type="button" @click=${this.handleAddRule}>
                     + Add

@@ -1,7 +1,7 @@
 import { Hono } from "@hono/hono";
 import { db } from "../db/index.ts";
 import { apiKeys } from "../db/schema.ts";
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createApiKeyRecord } from "../auth.ts";
 
 export const keysRouter = new Hono();

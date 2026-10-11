@@ -39,7 +39,8 @@ firmwareRouter.post("/", async (c) => {
 
         return c.json({ status: "success", firmware: result[0] });
     } catch (e: unknown) {
-        if (e instanceof Error && e.message?.includes("UNIQUE constraint failed: system_firmware.path")) {
+        const msg = e instanceof Error ? `${e.message} ${String((e as { cause?: unknown }).cause || "")}` : String(e);
+        if (msg.includes("UNIQUE constraint failed: system_firmware.path")) {
              return c.json({ error: "Path already mapped" }, 409);
         }
         console.error("Error adding firmware:", e);

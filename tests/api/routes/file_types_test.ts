@@ -1,12 +1,15 @@
 import { assertEquals } from "jsr:@std/assert@^0.217.0";
 import { fileTypesRouter } from "../../../apps/api/src/routes/fileTypes.ts";
+import { FileTypeWhitelistSchema } from "@repo/shared";
+import { z } from "zod";
 
-Deno.test("GET /api/file-types should return whitelist items", async () => {
+Deno.test("GET /api/file-types should return whitelist items conforming to FileTypeWhitelistSchema", async () => {
     const req = new Request("http://localhost/");
     const res = await fileTypesRouter.request(req);
     assertEquals(res.status, 200);
     const json = await res.json();
     assertEquals(Array.isArray(json), true);
+    z.array(FileTypeWhitelistSchema).parse(json);
 });
 
 Deno.test("POST /api/file-types should reject empty extension", async () => {
@@ -19,7 +22,7 @@ Deno.test("POST /api/file-types should reject empty extension", async () => {
     assertEquals(res.status, 400);
 });
 
-Deno.test("POST /api/file-types should add and DELETE should remove entry", async () => {
+Deno.test("POST /api/file-types should add and DELETE should remove entry conforming to FileTypeWhitelistSchema", async () => {
     // 1. Create
     const createReq = new Request("http://localhost/", {
         method: "POST",
@@ -34,9 +37,10 @@ Deno.test("POST /api/file-types should add and DELETE should remove entry", asyn
     assertEquals(createRes.status, 200);
     const createJson = await createRes.json();
     assertEquals(createJson.status, "success");
-    const createdId = createJson.entry.id;
-    assertEquals(createJson.entry.extension, "testext");
-    assertEquals(createJson.entry.magicNumber, "AABBCCDD");
+    const created = FileTypeWhitelistSchema.parse(createJson.entry);
+    const createdId = created.id;
+    assertEquals(created.extension, "testext");
+    assertEquals(created.magicNumber, "AABBCCDD");
 
     // 2. Delete
     const deleteReq = new Request(`http://localhost/${createdId}`, {

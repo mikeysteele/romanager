@@ -3,25 +3,29 @@ import { romsRouter } from "../../../apps/api/src/routes/roms.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { roms, games, systems } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
+import { RomSchema } from "@repo/shared";
+import { z } from "zod";
 
-Deno.test("GET / should return active roms", async () => {
+Deno.test("GET / should return active roms conforming to RomSchema contract", async () => {
     const req = new Request("http://localhost/");
     const res = await romsRouter.request(req);
     assertEquals(res.status, 200);
     const json = await res.json();
     assertEquals(Array.isArray(json), true);
+    z.array(RomSchema).parse(json);
 });
 
-Deno.test("GET / with limit and offset should support pagination", async () => {
+Deno.test("GET / with limit and offset should support pagination and conform to RomSchema", async () => {
     const req = new Request("http://localhost/?limit=1&offset=0");
     const res = await romsRouter.request(req);
     assertEquals(res.status, 200);
     const json = await res.json();
     assertEquals(Array.isArray(json), true);
     assertEquals(json.length <= 1, true);
+    z.array(RomSchema).parse(json);
 });
 
-Deno.test("GET /:id should return single rom details", async () => {
+Deno.test("GET /:id should return single rom details conforming to RomSchema", async () => {
     const sysId = "test-system-roms-get";
     const gameId = "test-game-roms-get";
     const romId = "test-get-rom-" + Date.now();
@@ -43,9 +47,10 @@ Deno.test("GET /:id should return single rom details", async () => {
         const res = await romsRouter.request(req);
         assertEquals(res.status, 200);
         const json = await res.json();
-        assertEquals(json.id, romId);
-        assertEquals(json.filename, "single.rom");
-        assertEquals(json.platform, "SysGet");
+        const parsedRom = RomSchema.parse(json);
+        assertEquals(parsedRom.id, romId);
+        assertEquals(parsedRom.filename, "single.rom");
+        assertEquals(parsedRom.platform, "SysGet");
     } finally {
         await db.delete(roms).where(eq(roms.id, romId));
         await db.delete(games).where(eq(games.id, gameId));
