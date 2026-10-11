@@ -20,6 +20,8 @@
     "test": "deno task test:api && deno task test:unit",
     "build:ui": "deno task --cwd apps/ui build",
     "dev:ui": "deno task --cwd apps/ui dev",
+    "compile:cli": "deno task --cwd apps/cli compile:x86_64",
+    "compile:cli:arm": "deno task --cwd apps/cli compile:aarch64",
     "bddgen": "deno run -A npm:playwright-bdd test",
     "test:bdd": "deno task bddgen && deno run -A npm:playwright test",
     "dev": "deno task dev:ui & deno task dev:api"
