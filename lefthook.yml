@@ -1,0 +1,21 @@
+# Lefthook Git Hooks Configuration
+# https://github.com/evilmartians/lefthook
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no -- @commitlint/cli --edit {1}
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{ts,tsx,js,jsx}"
+      run: deno lint {staged_files}
+    typecheck:
+      run: deno check apps/api/main.ts apps/cli/src/main.ts scripts/verify-migrations.ts
+
+pre-push:
+  commands:
+    migrations:
+      run: deno task test:migrations
