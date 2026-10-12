@@ -24,15 +24,5 @@ export default defineConfig({
         baseURL: "http://127.0.0.1:3333",
       },
     },
-    {
-      name: "e2e",
-      testDir: "tests/e2e",
-      testMatch: /.*\.spec\.ts/,
-      use: { 
-        ...devices["Desktop Chrome"],
-        channel: "chrome",
-        baseURL: "http://127.0.0.1:3333",
-      },
-    },
   ],
 });

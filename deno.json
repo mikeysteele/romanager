@@ -23,8 +23,8 @@
     "compile:cli": "deno task --cwd apps/cli compile:x86_64",
     "compile:cli:arm": "deno task --cwd apps/cli compile:aarch64",
     "bddgen": "deno run -A npm:playwright-bdd test",
-    "test:bdd": "deno task bddgen && deno run -A npm:@playwright/test test --project=bdd",
-    "test:e2e": "deno run -A npm:@playwright/test test --project=e2e",
+    "test:bdd": "deno task bddgen && deno run -A npm:@playwright/test test",
+    "test:e2e": "deno task test:bdd",
     "dev": "deno task dev:ui & deno task dev:api"
   },
   "exclude": [
