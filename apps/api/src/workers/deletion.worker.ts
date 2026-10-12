@@ -20,23 +20,23 @@ self.onmessage = async (e: MessageEvent<DeletionJob>) => {
 
                 // Guard against root, empty, or protected system paths
                 if (normalized === "/" || normalized === "\\" || PROTECTED_PREFIXES.some(prefix => normalized === prefix || normalized.startsWith(prefix + "/"))) {
-                    console.error(`[Worker] Blocked deletion attempt of protected system path: ${normalized}`);
+                    console.error("[Worker] Blocked deletion attempt of protected system path:", normalized);
                     continue;
                 }
 
                 const stat = await Deno.lstat(normalized);
                 if (stat.isDirectory) {
-                    console.warn(`[Worker] Refusing to delete directory via file deletion worker: ${normalized}`);
+                    console.warn("[Worker] Refusing to delete directory via file deletion worker:", normalized);
                     continue;
                 }
 
                 await Deno.remove(normalized);
-                console.log(`[Worker] Deleted physical file: ${normalized}`);
+                console.log("[Worker] Deleted physical file:", normalized);
             } catch (err: unknown) {
                 if (err instanceof Deno.errors.NotFound) {
-                    console.warn(`[Worker] File not found, skipping: ${rawPath}`);
+                    console.warn("[Worker] File not found, skipping:", rawPath);
                 } else {
-                    console.error(`[Worker] Error deleting physical file ${rawPath}:`, err);
+                    console.error("[Worker] Error deleting physical file:", rawPath, err);
                 }
             }
         }

@@ -7,10 +7,15 @@ import type { Context, Next } from "@hono/hono";
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 export function generateRawKey(): string {
-  const bytes = randomBytes(32);
   let str = "";
-  for (let i = 0; i < 32; i++) {
-    str += BASE62[bytes[i] % 62];
+  while (str.length < 32) {
+    const bytes = randomBytes(32);
+    for (let i = 0; i < bytes.length && str.length < 32; i++) {
+      // 256 % 62 = 8, so reject bytes >= 248 to eliminate modulo bias
+      if (bytes[i] < 248) {
+        str += BASE62[bytes[i] % 62];
+      }
+    }
   }
   return `rmg_${str}`;
 }
