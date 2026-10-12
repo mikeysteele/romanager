@@ -48,7 +48,7 @@ jobs:
           deno-version: v2.x
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
 
@@ -70,7 +70,7 @@ jobs:
           deno-version: v2.x
 
       - name: Setup Node.js (for Drizzle Kit test database)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
 
@@ -96,7 +96,7 @@ jobs:
           deno-version: v2.x
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
 
