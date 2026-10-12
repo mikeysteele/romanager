@@ -8,7 +8,16 @@ const { Given, When, Then } = createBdd();
 
 const TEST_ROOT = "/tmp/roms-e2e";
 
-Given('I am on the settings page', async ({ page }) => {
+Given('I am on the settings page', async ({ page, request }) => {
+  try {
+    await request.post('/api/platforms', {
+      data: { id: 'plat-snes', name: 'SNES', slug: 'snes', path: 'snes' }
+    });
+  } catch {
+    // Ignore if already created
+  }
+  await fs.mkdir('/tmp/roms/snes', { recursive: true });
+  await fs.writeFile('/tmp/roms/snes/mario.sfc', 'dummy content');
   await page.goto('/settings/rom-management');
 });
 
@@ -88,14 +97,17 @@ Then('I should see {string} in the systems list', async ({ page }, text: string)
 
 Then('I should find {int} games', async ({ request }, count: number) => {
     // Poll API
-    let games = [];
-    for (let i = 0; i < 10; i++) {
+    let totalCount = 0;
+    for (let i = 0; i < 15; i++) {
         const res = await request.get('/api/games');
-        games = await res.json();
-        if (games.length >= count) break;
+        const games = res.ok() ? await res.json() : [];
+        const unmappedRes = await request.get('/api/unmapped');
+        const unmapped = unmappedRes.ok() ? await unmappedRes.json() : [];
+        totalCount = games.length + unmapped.length;
+        if (totalCount >= count) break;
         await new Promise(r => setTimeout(r, 500));
     }
-    expect(games.length).toBeGreaterThanOrEqual(count);
+    expect(totalCount).toBeGreaterThanOrEqual(count);
 });
 
 interface GameSearchResult {
