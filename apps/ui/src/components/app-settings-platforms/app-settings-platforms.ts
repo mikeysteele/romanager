@@ -220,7 +220,8 @@ export class AppSettingsPlatforms extends LitElement {
 
   async handleAddPlatform(e: Event) {
       e.preventDefault();
-      if (!this.newPlatformName.trim()) return;
+      if (!this.newPlatformName.trim() || this.loading) return;
+      this.loading = true;
 
       try {
           const platformId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
@@ -254,6 +255,8 @@ export class AppSettingsPlatforms extends LitElement {
       } catch (e) {
           console.error("Failed to add platform:", e);
           toast('Failed to add platform', 'error');
+      } finally {
+          this.loading = false;
       }
   }
 
@@ -425,7 +428,7 @@ export class AppSettingsPlatforms extends LitElement {
             
             <div slot="actions">
                 <ui-button variant="secondary" @click=${this.closeAddPlatformDialog}>Cancel</ui-button>
-                <ui-button variant="primary" type="submit" form="add-platform-form" @click=${this.handleAddPlatform} ?disabled=${!this.newPlatformName.trim()}>Add Platform</ui-button>
+                <ui-button variant="primary" type="submit" form="add-platform-form" ?disabled=${!this.newPlatformName.trim()}>Add Platform</ui-button>
             </div>
         </ui-dialog>
       </div>
