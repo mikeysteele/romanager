@@ -6,11 +6,14 @@ on:
   pull_request:
     branches: [ main, master ]
 
-jobs:
-  test:
-    name: Lint, Build & Test
-    runs-on: ubuntu-latest
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,19 +23,115 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Setup Node.js (for Drizzle Kit migrations in test pipeline)
+      - name: Run Linter
+        run: deno lint
+
+      - name: Verify Types across Workspace
+        run: |
+          deno check apps/api/main.ts
+          deno check apps/cli/src/main.ts
+          deno check scripts/verify-migrations.ts
+          deno check tests/steps/devices.ts tests/steps/platforms.ts tests/steps/game_detail.ts tests/steps/navigation.ts tests/steps/settings.ts tests/steps/importing.ts
+
+  test-migrations:
+    name: Verify Migrations Replay
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Verify Types
-        run: deno check apps/api/main.ts
+      - name: Replay and Verify Migrations
+        env:
+          BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || 'origin/main' }}
+        run: deno task test:migrations
+
+  test-unit-and-api:
+    name: Unit & API Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Node.js (for Drizzle Kit test database)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Build UI Bundle
         run: deno task build:ui
 
-      - name: Run API Tests
+      - name: Run API Contract Tests
         run: deno task test:api
 
       - name: Run UI Unit Tests
         run: deno task test:unit
+
+  test-bdd-e2e:
+    name: Playwright BDD E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build UI Bundle
+        run: deno task build:ui
+
+      - name: Install Playwright Browsers & System Dependencies
+        run: npx playwright install --with-deps chrome
+
+      - name: Run BDD E2E Tests
+        run: deno task test:bdd
+
+      - name: Upload Playwright Artifacts on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  build-cli:
+    name: Compile CLI Binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Compile Linux x86_64 & aarch64
+        run: |
+          deno task compile:cli
+          deno task compile:cli:arm

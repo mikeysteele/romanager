@@ -17,6 +17,7 @@
     "dev:api": "deno run --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-ffi --watch apps/api/main.ts",
     "test:api": "rm -f test.db && DB_URL=file:test.db npx drizzle-kit push --config=apps/api/drizzle.config.ts > /dev/null && DB_URL=file:test.db deno test --allow-read --allow-write --allow-env --allow-net --allow-sys --allow-ffi --no-check tests/api",
     "test:unit": "DB_URL=file:test.db npx drizzle-kit push --config=apps/api/drizzle.config.ts > /dev/null && DB_URL=file:test.db deno test -A tests/unit",
+    "test:migrations": "deno run -A scripts/verify-migrations.ts",
     "test": "deno task test:api && deno task test:unit",
     "build:ui": "deno task --cwd apps/ui build",
     "dev:ui": "deno task --cwd apps/ui dev",
