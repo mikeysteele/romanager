@@ -6,7 +6,11 @@
     "romanager-sync": "./src/main.ts"
   },
   "tasks": {
-    "compile:x86_64": "deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys --target x86_64-unknown-linux-gnu --output dist/romanager-sync-x86_64 src/main.ts",
-    "compile:aarch64": "deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys --target aarch64-unknown-linux-gnu --output dist/romanager-sync-aarch64 src/main.ts"
+    "compile:x86_64": "deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys --target x86_64-unknown-linux-gnu --output dist/romanager-sync-linux-x86_64 src/main.ts",
+    "compile:aarch64": "deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys --target aarch64-unknown-linux-gnu --output dist/romanager-sync-linux-aarch64 src/main.ts",
+    "compile:darwin-x64": "deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys --target x86_64-apple-darwin --output dist/romanager-sync-darwin-x86_64 src/main.ts",
+    "compile:darwin-arm64": "deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys --target aarch64-apple-darwin --output dist/romanager-sync-darwin-aarch64 src/main.ts",
+    "compile:windows-x64": "deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys --target x86_64-pc-windows-msvc --output dist/romanager-sync-windows-x86_64.exe src/main.ts",
+    "compile:all": "deno task compile:x86_64 && deno task compile:aarch64 && deno task compile:darwin-x64 && deno task compile:darwin-arm64 && deno task compile:windows-x64"
   }
 }
