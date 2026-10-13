@@ -9,13 +9,15 @@ commit-msg:
 pre-commit:
   parallel: true
   commands:
-    lint:
-      glob: "*.{ts,tsx,js,jsx}"
-      run: deno lint {staged_files}
+    lint-staged:
+      run: npx lint-staged
     typecheck:
       run: deno check apps/api/main.ts apps/cli/src/main.ts scripts/verify-migrations.ts
 
 pre-push:
+  parallel: false
   commands:
     migrations:
       run: deno task test:migrations
+    tests:
+      run: deno task test
