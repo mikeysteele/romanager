@@ -43,6 +43,8 @@ For comprehensive technical documentation, refer to the guides in the [`docs/`](
 - 📡 **[API Reference](docs/api-reference.md)**: Complete REST API documentation, endpoints, query parameters, payloads, and SSE stream contracts.
 - 🗄️ **[Database Schema](docs/database-schema.md)**: Entity-Relationship diagram, table schemas, relationships, and indexing.
 - 🎨 **[UI Components & Design System](docs/ui-components.md)**: Lit component catalog, routing table, and Open Props design tokens.
+- 📑 **[Architecture Decision Records (ADRs)](docs/adr/README.md)**: Records of key architectural decisions.
+- 🚀 **[Deno to Node.js Migration Plan](docs/migration/deno-to-node-migration-plan.md)**: Detailed technical roadmap for migrating to Node.js LTS, Vite + Oxc, and Node SEA.
 
 ---
 
