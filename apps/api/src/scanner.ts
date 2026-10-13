@@ -1,3 +1,4 @@
+import { open } from "node:fs/promises";
 import type { Rom } from "@repo/shared";
 import { scanRomsWithSets } from "./scanner-sets.ts";
 
@@ -27,11 +28,11 @@ export async function verifyFileAgainstWhitelist(
     if (magicRules.length === 0) return true;
 
     try {
-        const file = await Deno.open(filePath, { read: true });
+        const file = await open(filePath, "r");
         try {
             const maxBytesNeeded = Math.max(...magicRules.map(r => Math.ceil(r.magicNumber!.replace(/\s+/g, '').length / 2)));
             const headerBuffer = new Uint8Array(maxBytesNeeded);
-            const bytesRead = await file.read(headerBuffer);
+            const { bytesRead } = await file.read(headerBuffer, 0, maxBytesNeeded, 0);
             if (!bytesRead || bytesRead === 0) return false;
 
             for (const rule of magicRules) {
@@ -54,7 +55,7 @@ export async function verifyFileAgainstWhitelist(
             }
             return false;
         } finally {
-            file.close();
+            await file.close();
         }
     } catch (_err) {
         return false;
@@ -64,4 +65,3 @@ export async function verifyFileAgainstWhitelist(
 export async function scanRoms(rootDir: string, onProgress?: (info: { count: number, currentFile: string }) => void): Promise<Rom[]> {
   return await scanRomsWithSets(rootDir, onProgress);
 }
-

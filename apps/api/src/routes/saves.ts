@@ -1,10 +1,12 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { db } from "../db/index.ts";
 import { saveFiles, saveVersions, settings } from "../db/schema.ts";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, type AuthVariables } from "../auth.ts";
-import { ensureDir } from "@std/fs";
-import { dirname, resolve } from "@std/path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
+import { dirname, resolve } from "node:path";
 import { createHash } from "node:crypto";
 
 export const savesRouter = new Hono<{ Variables: AuthVariables }>();
@@ -100,8 +102,8 @@ savesRouter.put("/*", async (c) => {
   // Save to disk
   const baseSavesDir = await getSaveStorageDir();
   const storedPath = resolve(baseSavesDir, device.id, relativePath, `${actualSha1}.bin`);
-  await ensureDir(dirname(storedPath));
-  await Deno.writeFile(storedPath, bytes);
+  await mkdir(dirname(storedPath), { recursive: true });
+  await writeFile(storedPath, bytes);
 
   const now = new Date().toISOString();
 
@@ -204,8 +206,8 @@ savesRouter.get("/*", async (c) => {
   }
 
   try {
-    const file = await Deno.open(version.storedPath, { read: true });
-    return new Response(file.readable, {
+    const stream = createReadStream(version.storedPath);
+    return new Response(Readable.toWeb(stream) as ReadableStream, {
       headers: {
         "Content-Type": "application/octet-stream",
         "Content-Length": version.size.toString(),

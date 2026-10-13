@@ -10,7 +10,8 @@ import {
 } from "./db/schema.ts";
 import { eq, and, asc } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { relative, basename } from "@std/path";
+import { relative, basename } from "node:path";
+import { stat as fsStat } from "node:fs/promises";
 import type { Manifest, ManifestSet, ManifestFile } from "@repo/shared";
 import { calculateSetHash } from "./hasher.ts";
 
@@ -259,7 +260,7 @@ export async function generateManifest(deviceId: string): Promise<Manifest | nul
 
         let fwSize = 0;
         try {
-          const stat = await Deno.stat(fw.path);
+          const stat = await fsStat(fw.path);
           fwSize = stat.size;
         } catch {
           // Keep 0 if file stat fails

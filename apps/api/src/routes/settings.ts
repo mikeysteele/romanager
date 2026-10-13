@@ -1,7 +1,8 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { getSettings, upsertSetting } from "../db/queries.ts";
+import type { IWorker } from "../worker-adapter.ts";
 
-export const createSettingsRouter = (worker: Worker) => {
+export const createSettingsRouter = (worker: IWorker) => {
     const settingsRouter = new Hono();
 
     settingsRouter.get("/", async (c) => {

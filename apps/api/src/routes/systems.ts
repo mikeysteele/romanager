@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { getSystems, getSystemBySlug, getGamesBySystemSlug, findOrCreateSystem, deleteSystem } from "../db/queries.ts";
 import { eventBus } from "../sse.ts";
 import { SystemSchema } from "@repo/shared";

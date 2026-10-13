@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { searchMetadata, fetchPlatforms } from "../metadata.ts";
 
 export const metadataRouter = new Hono();

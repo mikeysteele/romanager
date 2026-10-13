@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import * as schema from "./schema.ts";
 
-const dbUrl = Deno.env.get("DB_URL") || "file:romanager.db";
+const dbUrl = process.env.DB_URL || "file:romanager.db";
 const client = createClient({ url: dbUrl });
 
 if (dbUrl.startsWith("file:")) {

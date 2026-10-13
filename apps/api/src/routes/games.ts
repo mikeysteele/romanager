@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { getGames, getGamesBySystem, getGameById, getGameBySlug, searchLocalGames, deleteGameFromDb } from "../db/queries.ts";
 import { db } from "../db/index.ts";
 import { games, platforms, gamePlatforms, systems } from "../db/schema.ts";

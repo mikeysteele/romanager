@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { db } from "../db/index.ts";
 import { roms } from "../db/schema.ts";
 import { eq } from "drizzle-orm";

@@ -1,13 +1,10 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { db } from "../db/index.ts";
 import { scannedFiles } from "../db/schema.ts";
 import { getSettings } from "../db/queries.ts";
+import type { IWorker } from "../worker-adapter.ts";
 
-// Since worker and romsDir are passed to createServer in app.ts,
-// we will need to inject them or export a function to create the router.
-// For now, let's export a function that takes the worker and romsDir.
-
-export const createScansRouter = (worker: Worker, romsDir: string) => {
+export const createScansRouter = (worker: IWorker, romsDir: string) => {
     const scansRouter = new Hono();
 
     scansRouter.get("/", async (c) => {

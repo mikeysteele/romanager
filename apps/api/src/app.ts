@@ -1,8 +1,9 @@
-import { serveStatic } from "@hono/hono/serve-static";
-import { Hono } from "@hono/hono";
-import { cors } from "@hono/hono/cors";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { readFile, stat } from "node:fs/promises";
 import { eventBus } from "./sse.ts";
 import { webdav } from "./webdav.ts";
+import { createWorker } from "./worker-adapter.ts";
 
 // Import modular routers
 import { gamesRouter } from "./routes/games.ts";
@@ -27,7 +28,7 @@ export default function createServer(romsDir: string, appDir: string) {
     app.use("/*", cors());
 
     // Initialize Worker
-    const worker = new Worker(new URL("./workers/scanner.ts", import.meta.url).href, { type: "module" });
+    const worker = createWorker(new URL("./workers/scanner.ts", import.meta.url));
     worker.onmessage = (e) => {
         const msg = e.data;
         if (msg.type === 'start' || msg.type === 'progress' || msg.type === 'done' || msg.type === 'error') {
@@ -58,35 +59,29 @@ export default function createServer(romsDir: string, appDir: string) {
     app.route("/api/sync", syncRouter);
     app.route("/api/keys", keysRouter);
 
-
-    // Serve frontend
-    app.use("/*", serveStatic({
-        root: appDir,
-        getContent: async (path, c) => {
-            try {
-                return await Deno.readFile(path);
-            } catch (e) {
-                if (e instanceof Deno.errors.IsADirectory) {
-                    try {
-                        const indexPath = path.endsWith("/") ? `${path}index.html` : `${path}/index.html`;
-                        const data = await Deno.readFile(indexPath);
-                        return c.body(data, 200, { "Content-Type": "text/html" });
-                    } catch {
-                        return null;
-                    }
-                }
-                if (e instanceof Deno.errors.NotFound) {
-                    try {
-                        const indexPath = `${appDir}/index.html`;
-                        const data = await Deno.readFile(indexPath);
-                        return c.body(data, 200, { "Content-Type": "text/html" });
-                    } catch {
-                        return null;
-                    }
-                }
-                return null;
+    // Serve frontend SPA
+    app.use("/*", async (c, next) => {
+        const path = `${appDir}${c.req.path}`;
+        try {
+            const fileStat = await stat(path);
+            if (fileStat.isDirectory()) {
+                const indexPath = path.endsWith("/") ? `${path}index.html` : `${path}/index.html`;
+                const data = await readFile(indexPath);
+                return c.body(data, 200, { "Content-Type": "text/html" });
             }
-        },
-    }));
+            const data = await readFile(path);
+            return c.body(data);
+        } catch {
+            // SPA fallback to index.html
+            try {
+                const indexPath = `${appDir}/index.html`;
+                const data = await readFile(indexPath);
+                return c.body(data, 200, { "Content-Type": "text/html" });
+            } catch {
+                return next();
+            }
+        }
+    });
+
     return app;
 }
