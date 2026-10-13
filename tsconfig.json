@@ -6,6 +6,8 @@
   "include": [
     "apps/api/**/*",
     "apps/ui/**/*",
-    "packages/**/*"
+    "apps/cli/**/*",
+    "packages/**/*",
+    "scripts/**/*"
   ]
 }

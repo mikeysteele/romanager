@@ -35,6 +35,12 @@ importers:
       playwright-bdd:
         specifier: ^7.4.0
         version: 7.5.0(@cucumber/message-streams@5.0.1(@cucumber/messages@26.0.1))(@playwright/test@1.64.0)
+      postject:
+        specifier: 1.0.0-alpha.6
+        version: 1.0.0-alpha.6
+      rolldown:
+        specifier: ^1.2.13
+        version: 1.2.13
       tsx:
         specifier: ^4.19.2
         version: 4.23.15
@@ -97,14 +103,20 @@ importers:
         specifier: ^3.22.4
         version: 3.25.76
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.5
       postject:
         specifier: ^1.0.0-alpha.6
         version: 1.0.0-alpha.6
       rolldown:
-        specifier: ^1.0.0-beta.3
+        specifier: ^1.2.13
         version: 1.2.13
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.15
       typescript:
-        specifier: ^5.7.0
+        specifier: ^5.7.2
         version: 5.9.3
 
   apps/ui:

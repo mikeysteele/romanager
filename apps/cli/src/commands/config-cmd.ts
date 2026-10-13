@@ -40,7 +40,7 @@ export async function runConfig(
     const val = getNestedValue(config, key);
     if (val === undefined) {
       console.error(`Key '${key}' not found in configuration.`);
-      Deno.exit(1);
+      process.exit(1);
     }
     console.log(typeof val === "object" ? JSON.stringify(val, null, 2) : String(val));
     return;
@@ -49,7 +49,7 @@ export async function runConfig(
   if (action === "set") {
     if (!key || value === undefined) {
       console.error("Usage: romanager-sync config set <key> <value>");
-      Deno.exit(1);
+      process.exit(1);
     }
     const parsed = setNestedValue(config, key, parseValue(value));
     await saveConfig(parsed, configPath);
