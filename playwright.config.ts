@@ -9,10 +9,10 @@ const bddTestDir = defineBddConfig({
 export default defineConfig({
   reporter: process.env.CI ? "list" : [["list"], ["html", { open: "never" }]],
   webServer: {
-    command: "PORT=3333 deno run --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-ffi apps/api/main.ts",
+    command: "DB_URL=file:test-bdd.db npx drizzle-kit push --config=apps/api/drizzle.config.ts > /dev/null && DB_URL=file:test-bdd.db PORT=3333 deno run --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-ffi apps/api/main.ts",
     url: "http://127.0.0.1:3333/api/games",
     reuseExistingServer: !process.env.CI,
-    timeout: 15000,
+    timeout: 30000,
   },
   projects: [
     {
@@ -20,7 +20,7 @@ export default defineConfig({
       testDir: bddTestDir,
       use: { 
         ...devices["Desktop Chrome"],
-        channel: "chrome",
+        channel: process.env.PLAYWRIGHT_CHANNEL || "chrome",
         baseURL: "http://127.0.0.1:3333",
       },
     },

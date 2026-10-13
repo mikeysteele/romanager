@@ -1,0 +1,11 @@
+{
+  "name": "romanager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted retro ROM manager and companion sync daemon",
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "lefthook": "^1.10.8"
+  }
+}
