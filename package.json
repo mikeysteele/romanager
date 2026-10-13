@@ -3,10 +3,35 @@
   "version": "1.0.0",
   "private": true,
   "description": "Self-hosted retro ROM manager and companion sync daemon",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @romanager/ui --filter @romanager/api dev",
+    "dev:api": "pnpm --filter @romanager/api dev",
+    "dev:ui": "pnpm --filter @romanager/ui dev",
+    "build": "pnpm --recursive run build",
+    "build:ui": "pnpm --filter @romanager/ui build",
+    "build:cli": "pnpm --filter @repo/cli build:sea",
+    "test": "vitest run",
+    "test:api": "vitest run tests/api",
+    "test:unit": "vitest run tests/unit",
+    "test:e2e": "playwright-bdd test && playwright test",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "pnpm --filter @romanager/api exec drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "pnpm --filter @romanager/api exec drizzle-kit migrate --config=drizzle.config.ts",
+    "db:push": "pnpm --filter @romanager/api exec drizzle-kit push --config=drizzle.config.ts"
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",
     "@commitlint/config-conventional": "^19.6.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
+    "jsdom": "^25.0.1",
     "lefthook": "^1.10.8",
-    "lint-staged": "^15.4.3"
+    "lint-staged": "^15.4.3",
+    "oxlint": "^0.15.11",
+    "playwright-bdd": "^7.4.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

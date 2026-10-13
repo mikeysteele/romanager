@@ -12,12 +12,10 @@ pre-commit:
     lint-staged:
       run: npx lint-staged
     typecheck:
-      run: deno check apps/api/main.ts apps/cli/src/main.ts scripts/verify-migrations.ts
+      run: pnpm typecheck
 
 pre-push:
   parallel: false
   commands:
-    migrations:
-      run: deno task test:migrations
     tests:
-      run: deno task test
+      run: pnpm test
