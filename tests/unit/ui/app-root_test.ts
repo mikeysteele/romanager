@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertExists } from "@std/assert";
+import { assertExists } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-root/app-root.ts";
 import type { AppRoot } from "../../../apps/ui/src/components/app-root/app-root.ts";
 
-Deno.test("AppRoot: renders layout components", async () => {
+test("AppRoot: renders layout components", async () => {
     // Mock EventSource
     class MockEventSource {
         onmessage: ((ev: MessageEvent) => void) | null = null;

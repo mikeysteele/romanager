@@ -1,9 +1,9 @@
-import { assertEquals, assertNotEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals, assertNotEquals } from "@repo/tests/utils/assert";
 import { gamesRouter } from "../../../apps/api/src/routes/games.ts";
 import { GameSchema, GameReadSchema } from "@repo/shared";
 import { z } from "zod";
 
-Deno.test("gamesRouter: API contract validation and full CRUD lifecycle", async () => {
+test("gamesRouter: API contract validation and full CRUD lifecycle", async () => {
     const testId = `test-game-${Date.now()}`;
     const testSlug = `test-game-slug-${Date.now()}`;
 

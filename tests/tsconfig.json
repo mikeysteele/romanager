@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vitest/globals", "node"],
+    "baseUrl": "..",
+    "paths": {
+      "@repo/tests/*": ["tests/*"],
+      "@repo/shared": ["packages/shared/mod.ts"],
+      "@repo/ui-components": ["packages/ui-components/mod.ts"]
+    }
+  },
+  "include": ["**/*"]
+}

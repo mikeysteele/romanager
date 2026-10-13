@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-settings-roms/app-settings-roms.ts";
 import type { AppSettingsRoms } from "../../../apps/ui/src/components/app-settings-roms/app-settings-roms.ts";
 
-Deno.test("AppSettingsRoms: fetches settings on load", async () => {
+test("AppSettingsRoms: fetches settings on load", async () => {
     let fetchedSettings = false;
     globalThis.fetch = ((url: string) => {
         if (url === "/api/settings") {
@@ -31,7 +31,7 @@ Deno.test("AppSettingsRoms: fetches settings on load", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("AppSettingsRoms: saves settings on submit", async () => {
+test("AppSettingsRoms: saves settings on submit", async () => {
     let postOptions: RequestInit = {};
     globalThis.fetch = (_url, options) => {
         if (options && options.method === 'POST') {
@@ -51,7 +51,7 @@ Deno.test("AppSettingsRoms: saves settings on submit", async () => {
     assertEquals(postOptions.body, JSON.stringify({ key: "roms_dir", value: "/new/dir" }));
 });
 
-Deno.test("AppSettingsRoms: clicking browse button opens folder browser", async () => {
+test("AppSettingsRoms: clicking browse button opens folder browser", async () => {
     globalThis.fetch = (url, _options) => {
         const urlString = url instanceof Request? url.url : url.toString();
        

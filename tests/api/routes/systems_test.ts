@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { systemsRouter } from "../../../apps/api/src/routes/systems.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { systems, roms, games, systemFirmware } from "../../../apps/api/src/db/schema.ts";
@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { SystemSchema, SystemReadSchema } from "@repo/shared";
 import { z } from "zod";
 
-Deno.test("GET / should return systems with romCount and firmware complying with SystemReadSchema", async () => {
+test("GET / should return systems with romCount and firmware complying with SystemReadSchema", async () => {
     const req = new Request("http://localhost/");
     const res = await systemsRouter.request(req);
     assertEquals(res.status, 200);
@@ -20,13 +20,13 @@ Deno.test("GET / should return systems with romCount and firmware complying with
     }
 });
 
-Deno.test("GET /:slug should handle not found", async () => {
+test("GET /:slug should handle not found", async () => {
     const req = new Request("http://localhost/not-a-real-system-slug-xyz");
     const res = await systemsRouter.request(req);
     assertEquals(res.status, 404);
 });
 
-Deno.test("POST / and DELETE /:id allows deleting systems with 0 ROMs conforming to SystemSchema", async () => {
+test("POST / and DELETE /:id allows deleting systems with 0 ROMs conforming to SystemSchema", async () => {
     const testSysId = "test-sys-delete-" + Date.now();
     const testSysName = "Deletable Console " + Date.now();
     const testSysSlug = "deletable-console-" + Date.now();
@@ -77,7 +77,7 @@ Deno.test("POST / and DELETE /:id allows deleting systems with 0 ROMs conforming
     assertEquals(fwInDb, undefined);
 });
 
-Deno.test("DELETE /:id blocks deletion when system has active ROMs", async () => {
+test("DELETE /:id blocks deletion when system has active ROMs", async () => {
     const sysId = "test-sys-has-roms-" + Date.now();
     const gameId = "test-game-sys-protect-" + Date.now();
     const romId = "test-rom-protect-" + Date.now();
@@ -122,7 +122,7 @@ Deno.test("DELETE /:id blocks deletion when system has active ROMs", async () =>
     }
 });
 
-Deno.test("DELETE /:id returns 404 for non-existent system", async () => {
+test("DELETE /:id returns 404 for non-existent system", async () => {
     const req = new Request("http://localhost/non-existent-system-id-12345", {
         method: "DELETE"
     });
@@ -130,7 +130,7 @@ Deno.test("DELETE /:id returns 404 for non-existent system", async () => {
     assertEquals(res.status, 404);
 });
 
-Deno.test("PATCH /:id updates esFolder and name", async () => {
+test("PATCH /:id updates esFolder and name", async () => {
     const sysId = "test-sys-patch-" + Date.now();
     await db.insert(systems).values({
         id: sysId,

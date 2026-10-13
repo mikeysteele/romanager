@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-game-detail/app-game-detail.ts";
 import type { AppGameDetail } from "../../../apps/ui/src/components/app-game-detail/app-game-detail.ts";
 
-Deno.test("AppGameDetail: fetches game by routing params", async () => {
+test("AppGameDetail: fetches game by routing params", async () => {
     let fetchedUrl = "";
     globalThis.fetch = ((url: string) => {
         fetchedUrl = url;

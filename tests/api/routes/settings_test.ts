@@ -1,9 +1,9 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { createSettingsRouter } from "../../../apps/api/src/routes/settings.ts";
 
-Deno.test("GET / should return settings", async () => {
+test("GET / should return settings", async () => {
     // Mock worker
-    const worker = {} as Worker;
+    const worker = {} as any;
     const router = createSettingsRouter(worker);
     
     const req = new Request("http://localhost/");
@@ -13,12 +13,12 @@ Deno.test("GET / should return settings", async () => {
     assertEquals(Array.isArray(json), true);
 });
 
-Deno.test("POST / should update setting", async () => {
+test("POST / should update setting", async () => {
     // Mock worker
     let messageSent = false;
     const worker = {
         postMessage: () => { messageSent = true; }
-    } as unknown as Worker;
+    } as any;
     const router = createSettingsRouter(worker);
     
     const req = new Request("http://localhost/", {

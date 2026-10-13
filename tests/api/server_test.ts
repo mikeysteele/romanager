@@ -1,18 +1,18 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import createServer from "../../apps/api/src/app.ts";
 
 const setup = () => {
   return createServer('/tmp', './dist');
 }
 
-Deno.test("GET /api/health should return ok", async () => {
+test("GET /api/health should return ok", async () => {
   const res = await setup().request("/api/health");
   assertEquals(res.status, 200);
   const json = await res.json();
   assertEquals(json, { status: "ok" });
 });
 
-Deno.test("GET /api/roms should return list", async () => {
+test("GET /api/roms should return list", async () => {
   // We expect at least the dummy rom if the tests run in an env where that exists
   // For integration test, we might want to mock, but here we run against the real logic
   // which scans ./roms.

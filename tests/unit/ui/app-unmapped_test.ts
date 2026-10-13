@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals, assertExists } from "@std/assert";
+import { assertEquals, assertExists } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-unmapped/app-unmapped.ts";
 import type { AppUnmapped } from "../../../apps/ui/src/components/app-unmapped/app-unmapped.ts";
 
-Deno.test("AppUnmapped: fetches unmapped files on load", async () => {
+test("AppUnmapped: fetches unmapped files on load", async () => {
     const fetchedUrls: string[] = [];
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (url: string | URL | Request) => {
@@ -32,7 +32,7 @@ Deno.test("AppUnmapped: fetches unmapped files on load", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("AppUnmapped: review button opens HTML dialog", async () => {
+test("AppUnmapped: review button opens HTML dialog", async () => {
     const originalFetch = globalThis.fetch;
     const testFiles = [{ id: "1", filename: "mario.nes", path: "/roms/mario.nes", size: 1048576 }];
     globalThis.fetch = (url: string | URL | Request) => {
@@ -83,7 +83,7 @@ Deno.test("AppUnmapped: review button opens HTML dialog", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("AppUnmapped: Group & Review opens import dialog with multiple files", async () => {
+test("AppUnmapped: Group & Review opens import dialog with multiple files", async () => {
     const originalFetch = globalThis.fetch;
     const testFiles = [
         { id: "1", filename: "Final Fantasy VII (Disc 1).bin", path: "/roms/psx/FF7 (Disc 1).bin", size: 600000000 },

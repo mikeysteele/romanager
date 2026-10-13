@@ -1,4 +1,7 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { syncRouter } from "../../../apps/api/src/routes/sync.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import {
@@ -13,11 +16,11 @@ import {
 import { createApiKeyRecord } from "../../../apps/api/src/auth.ts";
 import { eq } from "drizzle-orm";
 
-Deno.test("syncRouter: file streaming, Range, 304, and device authorization", async () => {
+test("syncRouter: file streaming, Range, 304, and device authorization", async () => {
   const testId = Date.now().toString();
-  const testFilePath = await Deno.makeTempFile();
+  const testFilePath = path.join(os.tmpdir(), `temp-sync-${testId}.tmp`);
   const testContent = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  await Deno.writeTextFile(testFilePath, testContent);
+  await fs.writeFile(testFilePath, testContent, "utf-8");
 
   const sysId = `sys-sync-${testId}`;
   const gameId = `game-sync-${testId}`;
@@ -172,7 +175,7 @@ Deno.test("syncRouter: file streaming, Range, 304, and device authorization", as
     await db.delete(devices).where(eq(devices.id, devAId));
     await db.delete(devices).where(eq(devices.id, devBId));
     try {
-      await Deno.remove(testFilePath);
+      await fs.rm(testFilePath, { force: true });
     } catch {
       // ignore
     }

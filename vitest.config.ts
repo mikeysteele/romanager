@@ -27,12 +27,7 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      { find: /^@std\/assert(\/.*)?$/, replacement: path.resolve(__dirname, "tests/assert-shim.ts") },
-      { find: /^jsr:@std\/assert(@.*)?$/, replacement: path.resolve(__dirname, "tests/assert-shim.ts") },
-      { find: /^@std\/path(\/.*)?$/, replacement: "node:path" },
-      { find: /^jsr:@std\/path(@.*)?$/, replacement: "node:path" },
-      { find: /^@std\/fs(\/.*)?$/, replacement: path.resolve(__dirname, "tests/fs-shim.ts") },
-      { find: /^jsr:@std\/fs(@.*)?$/, replacement: path.resolve(__dirname, "tests/fs-shim.ts") },
+      { find: /^@repo\/tests\/(.*)$/, replacement: path.resolve(__dirname, "tests/$1") },
       { find: "@repo/shared", replacement: path.resolve(__dirname, "packages/shared/mod.ts") },
       { find: "@repo/ui-components", replacement: path.resolve(__dirname, "packages/ui-components/mod.ts") },
     ],

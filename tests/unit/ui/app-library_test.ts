@@ -1,10 +1,10 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import type { GameRead } from "@repo/shared";
 import "../../../apps/ui/src/components/app-library/app-library.ts";
 import type { AppLibrary } from "../../../apps/ui/src/components/app-library/app-library.ts";
 
-Deno.test("AppLibrary: fetches all games on load", async () => {
+test("AppLibrary: fetches all games on load", async () => {
     let fetchedUrl = "";
     globalThis.fetch = ((url: string) => {
         fetchedUrl = url;
@@ -27,7 +27,7 @@ Deno.test("AppLibrary: fetches all games on load", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("AppLibrary: filters games locally", () => {
+test("AppLibrary: filters games locally", () => {
     const el = document.createElement("app-library") as AppLibrary;
     el.games = [
         { id: "1", name: "Super Mario World", slug: "" } as unknown as GameRead,

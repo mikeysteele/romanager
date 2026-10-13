@@ -1,9 +1,9 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { fileTypesRouter } from "../../../apps/api/src/routes/fileTypes.ts";
 import { FileTypeWhitelistSchema } from "@repo/shared";
 import { z } from "zod";
 
-Deno.test("GET /api/file-types should return whitelist items conforming to FileTypeWhitelistSchema", async () => {
+test("GET /api/file-types should return whitelist items conforming to FileTypeWhitelistSchema", async () => {
     const req = new Request("http://localhost/");
     const res = await fileTypesRouter.request(req);
     assertEquals(res.status, 200);
@@ -12,7 +12,7 @@ Deno.test("GET /api/file-types should return whitelist items conforming to FileT
     z.array(FileTypeWhitelistSchema).parse(json);
 });
 
-Deno.test("POST /api/file-types should reject empty extension", async () => {
+test("POST /api/file-types should reject empty extension", async () => {
     const req = new Request("http://localhost/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -22,7 +22,7 @@ Deno.test("POST /api/file-types should reject empty extension", async () => {
     assertEquals(res.status, 400);
 });
 
-Deno.test("POST /api/file-types should add and DELETE should remove entry conforming to FileTypeWhitelistSchema", async () => {
+test("POST /api/file-types should add and DELETE should remove entry conforming to FileTypeWhitelistSchema", async () => {
     // 1. Create
     const createReq = new Request("http://localhost/", {
         method: "POST",

@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals, assertExists } from "@std/assert";
+import { assertEquals, assertExists } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-emulator/app-emulator.ts";
 import type { AppEmulator } from "../../../apps/ui/src/components/app-emulator/app-emulator.ts";
 
-Deno.test("AppEmulator: fetches rom data and displays toolbar", async () => {
+test("AppEmulator: fetches rom data and displays toolbar", async () => {
     let fetchedUrl = "";
     globalThis.fetch = ((url: string) => {
         fetchedUrl = url;

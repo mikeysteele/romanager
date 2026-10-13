@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals, assertNotEquals } from "@repo/tests/utils/assert";
 import { generateManifest } from "../../../apps/api/src/manifest.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import {
@@ -13,7 +13,7 @@ import {
 } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
 
-Deno.test("manifest: rule evaluation, oneRomPerGame, firmware, budget, and deterministic version", async () => {
+test("manifest: rule evaluation, oneRomPerGame, firmware, budget, and deterministic version", async () => {
   const testId = `mtest-${Date.now()}`;
   const devId = `dev-${testId}`;
   const sysSnes = `sys-snes-${testId}`;

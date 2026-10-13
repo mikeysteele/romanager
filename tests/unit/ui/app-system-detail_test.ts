@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-system-detail/app-system-detail.ts";
 import type { AppSystemDetail } from "../../../apps/ui/src/components/app-system-detail/app-system-detail.ts";
 
-Deno.test("AppSystemDetail: fetches system and games by slug", async () => {
+test("AppSystemDetail: fetches system and games by slug", async () => {
     let fetchedUrl = "";
     (globalThis as unknown as { fetch: unknown }).fetch = (url: string) => {
         fetchedUrl = url;

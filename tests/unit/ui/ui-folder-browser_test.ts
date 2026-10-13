@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../packages/ui-components/src/ui-folder-browser/ui-folder-browser.ts";
 import type { UiFolderBrowser } from "../../../packages/ui-components/src/ui-folder-browser/ui-folder-browser.ts";
 
@@ -23,7 +23,7 @@ function mockBrowseFetch(responsePath = "/home/roms", subdirs = ["nes", "snes", 
     };
 }
 
-Deno.test("UiFolderBrowser: does not render modal when closed", async () => {
+test("UiFolderBrowser: does not render modal when closed", async () => {
     mockBrowseFetch();
     const el = document.createElement("ui-folder-browser") as UiFolderBrowser;
     document.body.appendChild(el);
@@ -35,7 +35,7 @@ Deno.test("UiFolderBrowser: does not render modal when closed", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("UiFolderBrowser: renders modal and loads directories when open is true", async () => {
+test("UiFolderBrowser: renders modal and loads directories when open is true", async () => {
     mockBrowseFetch("/games/library", ["arcade", "gba", "psx"]);
     const el = document.createElement("ui-folder-browser") as UiFolderBrowser;
     el.open = true;
@@ -61,7 +61,7 @@ Deno.test("UiFolderBrowser: renders modal and loads directories when open is tru
     document.body.removeChild(el);
 });
 
-Deno.test("UiFolderBrowser: selecting folder dispatches folder-selected and closes", async () => {
+test("UiFolderBrowser: selecting folder dispatches folder-selected and closes", async () => {
     mockBrowseFetch("/games/library", ["arcade", "gba"]);
     const el = document.createElement("ui-folder-browser") as UiFolderBrowser;
     el.open = true;
@@ -100,7 +100,7 @@ Deno.test("UiFolderBrowser: selecting folder dispatches folder-selected and clos
     document.body.removeChild(el);
 });
 
-Deno.test("UiFolderBrowser: closing modal dispatches ui-folder-browser-close", async () => {
+test("UiFolderBrowser: closing modal dispatches ui-folder-browser-close", async () => {
     mockBrowseFetch();
     const el = document.createElement("ui-folder-browser") as UiFolderBrowser;
     el.open = true;

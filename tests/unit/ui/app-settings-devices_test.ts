@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-settings-devices/app-settings-devices.ts";
 import type { AppSettingsDevices } from "../../../apps/ui/src/components/app-settings-devices/app-settings-devices.ts";
 
-Deno.test("AppSettingsDevices: fetches devices on load and renders cards", async () => {
+test("AppSettingsDevices: fetches devices on load and renders cards", async () => {
   let fetchedDevices = false;
   globalThis.fetch = ((url: string) => {
     if (url === "/api/devices") {
@@ -55,7 +55,7 @@ Deno.test("AppSettingsDevices: fetches devices on load and renders cards", async
   document.body.removeChild(el);
 });
 
-Deno.test("AppSettingsDevices: renders empty state when no devices enrolled", async () => {
+test("AppSettingsDevices: renders empty state when no devices enrolled", async () => {
   globalThis.fetch = (() => {
     return Promise.resolve({
       ok: true,

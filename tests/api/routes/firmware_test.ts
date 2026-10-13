@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { firmwareRouter } from "../../../apps/api/src/routes/firmware.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { systems, systemFirmware } from "../../../apps/api/src/db/schema.ts";
@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { SystemFirmwareSchema } from "@repo/shared";
 import { z } from "zod";
 
-Deno.test("firmwareRouter: CRUD operations and SystemFirmwareSchema contract validation", async () => {
+test("firmwareRouter: CRUD operations and SystemFirmwareSchema contract validation", async () => {
     const sysId = `test-fw-sys-${Date.now()}`;
     const fwId = `test-fw-${Date.now()}`;
     const fwPath = `/tmp/bios-${Date.now()}.bin`;

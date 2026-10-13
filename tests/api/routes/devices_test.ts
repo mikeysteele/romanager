@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals, assertNotEquals } from "@repo/tests/utils/assert";
 import { devicesRouter } from "../../../apps/api/src/routes/devices.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@repo/shared";
 import { z } from "zod";
 
-Deno.test("devicesRouter: CRUD and Companion flow with API contract verification", async () => {
+test("devicesRouter: CRUD and Companion flow with API contract verification", async () => {
   const timestamp = Date.now();
   const devName = `Batocera Handheld ${timestamp}`;
 

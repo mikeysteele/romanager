@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals, assert } from "@std/assert";
+import { assertEquals, assert } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-sidebar/app-sidebar.ts";
 import { AppSidebar } from "../../../apps/ui/src/components/app-sidebar/app-sidebar.ts";
 
-Deno.test("AppSidebar: toggle works correctly", () => {
+test("AppSidebar: toggle works correctly", () => {
     const sidebar = new AppSidebar();
     
     // Initial state: 'games' is expanded
@@ -19,7 +19,7 @@ Deno.test("AppSidebar: toggle works correctly", () => {
     assert(sidebar.isExpanded('games'));
 });
 
-Deno.test("AppSidebar: isActive logic", () => {
+test("AppSidebar: isActive logic", () => {
     const sidebar = new AppSidebar();
     
     sidebar.currentPath = '/';
@@ -37,7 +37,7 @@ Deno.test("AppSidebar: isActive logic", () => {
     assert(!sidebar.isActive('/')); 
 });
 
-Deno.test("AppSidebar: refreshes platforms on platforms-updated event", async () => {
+test("AppSidebar: refreshes platforms on platforms-updated event", async () => {
     let callCount = 0;
     (globalThis as unknown as { fetch: unknown }).fetch = (_url: string) => {
         callCount++;

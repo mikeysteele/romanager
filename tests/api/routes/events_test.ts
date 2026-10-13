@@ -1,8 +1,8 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { eventsRouter } from "../../../apps/api/src/routes/events.ts";
 import { eventBus } from "../../../apps/api/src/sse.ts";
 
-Deno.test("eventsRouter: GET / establishes SSE stream and receives initial connection event", async () => {
+test("eventsRouter: GET / establishes SSE stream and receives initial connection event", async () => {
     const req = new Request("http://localhost/");
     const res = await eventsRouter.request(req);
     assertEquals(res.status, 200);
