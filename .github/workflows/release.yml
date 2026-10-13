@@ -20,48 +20,55 @@ permissions:
 jobs:
   build-cli:
     name: Build CLI (${{ matrix.asset }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.allow_fail || false }}
     strategy:
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
             asset: romanager-sync-linux-x86_64
-          - target: aarch64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
             asset: romanager-sync-linux-aarch64
-          - target: x86_64-apple-darwin
+            allow_fail: true
+          - os: macos-13
             asset: romanager-sync-darwin-x86_64
-          - target: aarch64-apple-darwin
+          - os: macos-latest
             asset: romanager-sync-darwin-aarch64
-          - target: x86_64-pc-windows-msvc
+          - os: windows-latest
             asset: romanager-sync-windows-x86_64.exe
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          deno-version: v2.x
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Compile CLI Binary
-        run: |
-          mkdir -p dist
-          deno compile --allow-read --allow-write --allow-net --allow-env --allow-sys \
-            --target ${{ matrix.target }} \
-            --output dist/${{ matrix.asset }} \
-            apps/cli/src/main.ts
+        env:
+          OUTPUT_NAME: ${{ matrix.asset }}
+        run: pnpm run build:cli
 
       - name: Generate Checksum
+        shell: bash
         run: |
-          cd dist
-          sha256sum ${{ matrix.asset }} > ${{ matrix.asset }}.sha256
+          node -e 'const fs = require("node:fs"), crypto = require("node:crypto"); const file = "apps/cli/dist/${{ matrix.asset }}"; const buf = fs.readFileSync(file); const hash = crypto.createHash("sha256").update(buf).digest("hex"); fs.writeFileSync(file + ".sha256", hash + "  ${{ matrix.asset }}\n");'
 
       - name: Upload Binary Artifact
         uses: actions/upload-artifact@v4
         with:
           name: cli-${{ matrix.asset }}
-          path: dist/*
+          path: |
+            apps/cli/dist/${{ matrix.asset }}
+            apps/cli/dist/${{ matrix.asset }}.sha256
           retention-days: 1
 
   publish-docker:
@@ -122,6 +129,7 @@ jobs:
           merge-multiple: true
 
       - name: Combine Checksums
+        shell: bash
         run: |
           cd release-assets
           cat *.sha256 > checksums.txt

@@ -1,28 +1,46 @@
 # Build stage for UI Single Page Application
-FROM denoland/deno:2.1.4 AS ui-builder
+FROM node:22-bookworm-slim AS ui-builder
 WORKDIR /app
+
+# Enable Corepack and prepare pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy dependency manifests
-COPY deno.json deno.lock* ./
-COPY apps/ui/package.json* ./apps/ui/
-COPY apps/ui/deno.json* ./apps/ui/
-COPY apps/ui/tsconfig.json* ./apps/ui/
-COPY apps/ui/vite.config.ts ./apps/ui/
-COPY packages ./packages
-COPY apps/ui/src ./apps/ui/src
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json tsconfig.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/ui-components/package.json ./packages/ui-components/
+COPY apps/ui/package.json ./apps/ui/
 
-# Cache dependencies and build static UI bundle
-RUN deno task build:ui
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy UI and package source files
+COPY packages ./packages
+COPY apps/ui ./apps/ui
+
+# Build static UI bundle
+RUN pnpm run build:ui
 
 # Production runtime stage
-FROM denoland/deno:2.1.4 AS runner
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
+
+# Enable Corepack and prepare pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Create persistent storage directories
 RUN mkdir -p /data /roms
 
-# Copy dependency files and source code
-COPY deno.json deno.lock* ./
+# Copy dependency manifests
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json tsconfig.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/ui-components/package.json ./packages/ui-components/
+COPY apps/api/package.json ./apps/api/
+
+# Install runtime dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy backend source code and migrations
 COPY packages ./packages
 COPY apps/api ./apps/api
 COPY drizzle ./drizzle
@@ -42,4 +60,4 @@ EXPOSE 8000
 VOLUME ["/data", "/roms"]
 
 # Start server
-CMD ["run", "--allow-net", "--allow-read", "--allow-write", "--allow-env", "--allow-sys", "--allow-ffi", "apps/api/main.ts"]
+CMD ["pnpm", "start"]

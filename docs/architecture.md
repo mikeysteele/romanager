@@ -60,7 +60,7 @@ graph TB
 
 ## 2. Monorepo Structure
 
-Romanager is structured as a Deno workspace configured in the root [`deno.json`](../deno.json):
+Romanager is structured as a pnpm monorepo workspace configured in [`pnpm-workspace.yaml`](../pnpm-workspace.yaml) and [`package.json`](../package.json):
 
 ```
 Romanager/
@@ -78,14 +78,17 @@ Romanager/
 │   │       ├── worker.ts        # Deletion worker singleton manager
 │   │       ├── db/              # Database initialization, schema, and queries
 │   │       ├── routes/          # Modular API route handlers
-│   │       └── workers/         # Deno Web Worker scripts
-│   └── ui/                      # Frontend Single Page Application (Lit)
-│       ├── vite.config.ts       # Vite configuration
+│   │       └── workers/         # Node.js Worker thread scripts
+│   ├── ui/                      # Frontend Single Page Application (Lit, Vite)
+│   │   ├── vite.config.ts       # Vite configuration
+│   │   └── src/
+│   │       ├── index.html       # HTML root with theme fonts
+│   │       ├── index.ts         # Application bootstrap & entry point
+│   │       ├── global/          # Open Props global styles (app.css)
+│   │       └── components/      # Lit Web Components & pages
+│   └── cli/                     # CLI Companion Daemon (Single Executable Application)
+│       ├── sea-config.json      # Node.js SEA configuration
 │       └── src/
-│           ├── index.html       # HTML root with theme fonts
-│           ├── index.ts         # Application bootstrap & entry point
-│           ├── global/          # Open Props global styles (app.css)
-│           └── components/      # Lit Web Components & pages
 ├── packages/
 │   ├── shared/                  # Cross-boundary TypeScript definitions & Zod schemas
 │   │   ├── types.ts             # Data models & schemas (Game, Rom, System, etc.)
@@ -93,11 +96,12 @@ Romanager/
 │   └── ui-components/           # Reusable Lit web component library
 │       └── src/                 # data-table, game-card, ui-dialog, ui-tabs, ui-toast
 ├── tests/                       # Test suites
-│   ├── api/                     # Deno integration & route tests
-│   ├── unit/                    # Unit tests for API, shared utils, and UI components
+│   ├── api/                     # Vitest API contract tests
+│   ├── unit/                    # Unit tests for API, shared utils, CLI, and UI
 │   ├── features/                # Cucumber Gherkin feature definitions
 │   └── steps/                   # Playwright-BDD step definitions
-├── deno.json                    # Workspace definition, tasks, and dependency imports
+├── pnpm-workspace.yaml          # Monorepo workspace configuration
+├── package.json                 # Monorepo scripts and devDependencies
 └── roms/                        # Default ROM storage directory
 ```
 

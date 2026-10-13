@@ -1,6 +1,4 @@
 import { execSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
 
 export default function setup() {
   process.env.DB_URL = process.env.DB_URL || "file:test.db";

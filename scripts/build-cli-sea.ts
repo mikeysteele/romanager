@@ -58,6 +58,13 @@ async function main() {
     }
   }
 
+  if (process.env.OUTPUT_NAME && process.env.OUTPUT_NAME !== binaryName) {
+    const customTarget = path.join(distDir, process.env.OUTPUT_NAME);
+    await fs.copyFile(targetBinary, customTarget);
+    await fs.chmod(customTarget, 0o755);
+    console.log(`🎉 Copied binary to: ${customTarget}`);
+  }
+
   console.log(`🎉 Single Executable Application built successfully: ${targetBinary}`);
 }
 

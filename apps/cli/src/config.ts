@@ -122,7 +122,8 @@ export async function loadConfig(configPath?: string): Promise<CliConfig> {
     const raw = await readFile(targetPath, "utf-8");
     return JSON.parse(raw) as CliConfig;
   } catch (e: any) {
-    const isNotFound = e.code === "ENOENT" || (typeof (globalThis as any).Deno !== "undefined" && e instanceof (globalThis as any).Deno?.errors?.NotFound);
+    const DenoObj = (globalThis as any).Deno;
+    const isNotFound = e.code === "ENOENT" || Boolean(DenoObj?.errors?.NotFound && e instanceof DenoObj.errors.NotFound);
     if (isNotFound) {
       throw new Error(`Configuration file not found at ${targetPath}. Run 'romanager-sync init' first.`);
     }
