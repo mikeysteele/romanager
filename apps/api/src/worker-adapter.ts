@@ -12,8 +12,11 @@ export class UniversalWorker implements IWorker {
   public onmessage: ((e: { data: any }) => void) | null = null;
   public onerror: ((err: unknown) => void) | null = null;
 
-  constructor(url: URL | string) {
-    this.worker = new NodeWorker(url);
+  constructor(url: URL | string, _options?: unknown) {
+    const workerUrl = typeof url === "string" && url.startsWith("file:") ? new URL(url) : url;
+    this.worker = new NodeWorker(workerUrl, {
+      execArgv: process.execArgv.includes("--import") ? process.execArgv : ["--import", "tsx"],
+    });
     this.worker.on("message", (data) => {
       if (this.onmessage) this.onmessage({ data });
     });

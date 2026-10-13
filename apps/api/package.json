@@ -7,7 +7,10 @@
   },
   "scripts": {
     "dev": "tsx watch main.ts",
-    "start": "tsx main.ts"
+    "start": "tsx main.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

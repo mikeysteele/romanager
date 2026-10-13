@@ -59,12 +59,13 @@ Deno.test("GET /:id should return single rom details conforming to RomSchema", a
 });
 
 Deno.test("DELETE /:id should mark rom as pendingDelete", async () => {
-    const sysId = "test-system-roms-del";
-    const gameId = "test-game-roms-del";
-    const dummyId = "test-delete-rom-" + Date.now();
+    const timestamp = Date.now();
+    const sysId = "test-system-roms-del-" + timestamp;
+    const gameId = "test-game-roms-del-" + timestamp;
+    const dummyId = "test-delete-rom-" + timestamp;
 
     // foreign key prep
-    await db.insert(systems).values({ id: sysId, name: "Sys", slug: "sys" }).onConflictDoNothing();
+    await db.insert(systems).values({ id: sysId, name: "Sys", slug: "sys-" + timestamp }).onConflictDoNothing();
     await db.insert(games).values({ id: gameId, name: "Game", slug: gameId }).onConflictDoNothing();
 
     await db.insert(roms).values({

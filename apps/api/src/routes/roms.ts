@@ -73,7 +73,9 @@ romsRouter.delete("/:id", async (c) => {
         });
 
         // Broadcast to clients so the UI updates
-        globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        if (typeof globalThis.dispatchEvent === "function") {
+            globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        }
 
         return c.json({ success: true, message: `ROM ${id} marked for deletion.` }, 202);
     } catch (e) {

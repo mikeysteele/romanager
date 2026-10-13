@@ -9,7 +9,7 @@ const bddTestDir = defineBddConfig({
 export default defineConfig({
   reporter: process.env.CI ? "list" : [["list"], ["html", { open: "never" }]],
   webServer: {
-    command: "DB_URL=file:test-bdd.db npx drizzle-kit push --config=apps/api/drizzle.config.ts > /dev/null && DB_URL=file:test-bdd.db PORT=3333 deno run --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-ffi apps/api/main.ts",
+    command: "DB_URL=file:test-bdd.db pnpm --filter @romanager/api db:push && DB_URL=file:test-bdd.db PORT=3333 pnpm --filter @romanager/api start",
     url: "http://127.0.0.1:3333/api/games",
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
