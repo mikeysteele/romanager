@@ -1,0 +1,12 @@
+{
+  "name": "@repo/ui-components",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./mod.ts"
+  },
+  "dependencies": {
+    "@repo/shared": "workspace:*",
+    "lit": "^3.1.0"
+  }
+}
