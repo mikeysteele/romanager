@@ -64,7 +64,7 @@ filesystemRouter.get("/browse", async (c) => {
             }
         }
     } catch (err) {
-        console.warn(`[Filesystem] Unable to read directory ${targetPath}:`, err);
+        console.warn("[Filesystem] Unable to read directory %s:", targetPath, err);
     }
 
     // Sort case-insensitively and numerically

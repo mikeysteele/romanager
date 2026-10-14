@@ -81,7 +81,7 @@ gamesRouter.delete("/:id", async (c) => {
 
         return c.json({ success: true, message: `Game ${id} deleted.` }, 202);
     } catch (e) {
-        console.error(`Failed to dispatch game deletion for ${id}:`, e);
+        console.error("Failed to dispatch game deletion for %s:", id, e);
         return c.json({ error: "Failed to dispatch game deletion." }, 500);
     }
 });

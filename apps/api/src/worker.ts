@@ -26,7 +26,7 @@ export function getDeletionWorker(): IWorker {
                     eventBus.emit('sse-message', { type: 'done', action: 'game-deleted', id });
                 }
             } catch (err) {
-                console.error(`[Main] Failed to finalize DB deletion for ${type} ${id}`, err);
+                console.error("[Main] Failed to finalize DB deletion for %s %s:", type, id, err);
             }
         };
 

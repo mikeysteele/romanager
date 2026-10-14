@@ -39,7 +39,7 @@ romsRouter.get("/:id", async (c) => {
         if (!romData) return c.notFound();
         return c.json(romData);
     } catch (e) {
-        console.error(`Failed to fetch rom ${id}:`, e);
+        console.error("Failed to fetch rom %s:", id, e);
         return c.json({ error: "Failed to fetch rom." }, 500);
     }
 });
@@ -79,7 +79,7 @@ romsRouter.delete("/:id", async (c) => {
 
         return c.json({ success: true, message: `ROM ${id} marked for deletion.` }, 202);
     } catch (e) {
-        console.error(`Failed to dispatch ROM deletion for ${id}:`, e);
+        console.error("Failed to dispatch ROM deletion for %s:", id, e);
         return c.json({ error: "Failed to dispatch ROM deletion." }, 500);
     }
 });

@@ -144,7 +144,7 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
         files: memberFiles,
       });
     } catch (e) {
-      console.warn(`[Scanner] Error parsing .m3u ${m3u.path}:`, e);
+      console.warn("[Scanner] Error parsing .m3u %s:", m3u.path, e);
     }
   }
 
@@ -212,7 +212,7 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
         files: memberFiles,
       });
     } catch (e) {
-      console.warn(`[Scanner] Error parsing .gdi ${gdi.path}:`, e);
+      console.warn("[Scanner] Error parsing .gdi %s:", gdi.path, e);
     }
   }
 
@@ -280,7 +280,7 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
         files: memberFiles,
       });
     } catch (e) {
-      console.warn(`[Scanner] Error parsing .cue ${cue.path}:`, e);
+      console.warn("[Scanner] Error parsing .cue %s:", cue.path, e);
     }
   }
 
@@ -375,7 +375,7 @@ export async function scanRomsWithSets(
             });
           }
         } catch (e) {
-          console.error(`[Scanner] Error reading directory set ${normPath}:`, e);
+          console.error("[Scanner] Error reading directory set %s:", normPath, e);
         }
 
         if (setFiles.length > 0) {
@@ -456,7 +456,7 @@ export async function scanRomsWithSets(
           file.crc32 = hashes.crc32;
           file.mtime = hashes.mtime;
         } catch (e) {
-          console.warn(`[Scanner] Could not calculate hashes for ${file.path}:`, e);
+          console.warn("[Scanner] Could not calculate hashes for %s:", file.path, e);
         }
       }
     }
