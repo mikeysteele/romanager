@@ -74,9 +74,6 @@ try {
     // Extract base ref drizzle folder
     const archive = await runCmd("git", ["archive", baseRef, "drizzle"]);
     if (archive.code === 0) {
-      const tarResult = await runCmd("tar", ["-x", "-C", baseDrizzleDir], {
-        // tar from git archive
-      });
       // Try writing archive buffer or fallback
       console.log(`🚀 [2/4] Applying base migrations from '${baseRef}'...`);
       const baseMigrate = await runCmd(
