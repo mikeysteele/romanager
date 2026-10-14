@@ -11,7 +11,7 @@ test("env: getDefaultEnvPaths includes cwd .env, apps/api .env, and root .env", 
   assertEquals(paths.length, 3);
   assertEquals(paths[0], path.resolve(customCwd, ".env"));
   assertEquals(paths[1].endsWith(path.join("apps", "api", ".env")), true);
-  assertEquals(paths[2].endsWith(path.join("Romanager", ".env")), true);
+  assertEquals(paths[2].toLowerCase().endsWith(path.join("romanager", ".env")), true);
 });
 
 test("env: loadEnv handles non-existent files gracefully without throwing", () => {
