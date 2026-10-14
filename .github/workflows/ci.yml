@@ -126,7 +126,7 @@ jobs:
           retention-days: 7
 
   build-cli:
-    name: Build CLI Single Executable Application
+    name: Compile CLI Binaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
