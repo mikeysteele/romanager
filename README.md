@@ -12,8 +12,8 @@ Romanager brings the streamlined, automated management style of the "*arr" ecosy
 - 🔍 **Non-Destructive Ingestion & Staging**: Automatic recursive directory scanner detects new files safely into an unmapped staging table (`scanned_files`) without polluting your clean library.
 - 🏷️ **Intelligent Unmapped Triage**: Fast, bulk review of scanned files with automatic title guessing, RAWG online database matching, platform filtering, and region tagging (USA, EUR, JPN, WLD).
 - 🧩 **Firmware & BIOS Tracker**: Manage system firmware and BIOS files required by emulators; map discovered BIOS dumps directly to emulation platforms.
-- 💻 **Companion CLI (`romanager-sync`)**: Native sync client for Batocera, Steam Deck, and EmulationStation handhelds supporting atomic multi-file ROM sets, live SSE watch daemon, and bidirectional save backup/restore.
-- ⚡ **Background Processing & Real-Time Sync**: Multi-threaded architecture utilizing Deno Web Workers for CPU/IO-heavy scanning and physical file deletion, with live progress updates streamed via Server-Sent Events (SSE).
+- 💻 **Companion CLI (`romanager-sync`)**: Standalone Single Executable Application (SEA) for Batocera, Steam Deck, and EmulationStation handhelds supporting atomic multi-file ROM sets, live SSE watch daemon, and bidirectional save backup/restore.
+- ⚡ **Background Processing & Real-Time Sync**: Multi-threaded architecture utilizing Node.js worker threads (`node:worker_threads`) for CPU/IO-heavy scanning and physical file deletion, with live progress updates streamed via Server-Sent Events (SSE).
 - 🌐 **Embedded WebDAV Server**: Mount your ROM collection directly to network-connected retro handhelds (e.g. Miyoo Mini, Anbernic, Steam Deck, PS Vita) or emulator frontends (RetroArch, EmulationStation).
 - 🕹️ **In-Browser Emulator Shell**: Built-in player foundation to launch and play ROMs directly in your browser.
 
@@ -21,15 +21,16 @@ Romanager brings the streamlined, automated management style of the "*arr" ecosy
 
 ## Monorepo Architecture
 
-Romanager is built as a TypeScript monorepo powered by **[Deno](https://deno.com)** and modern web standards:
+Romanager is built as a TypeScript monorepo powered by **Node.js 26** and **pnpm workspaces**:
 
 | Workspace | Description | Tech Stack |
 | :--- | :--- | :--- |
-| [`apps/api`](apps/api) | REST API, WebDAV, sync endpoints & SSE event bus | Deno, Hono, Drizzle ORM, LibSQL/SQLite, Web Workers |
-| [`apps/ui`](apps/ui) | Single Page Application (SPA) | Lit Web Components, @lit-labs/router, Open Props CSS, Vite |
-| [`apps/cli`](apps/cli) | Companion CLI sync agent (`romanager-sync`) | Deno, TypeScript, `@repo/shared` |
-| [`packages/shared`](packages/shared) | Shared models, types, and Zod schemas | TypeScript, Zod |
+| [`apps/api`](apps/api) | REST API, WebDAV, sync endpoints & SSE event bus | Node.js 26, Hono (`@hono/node-server`), Drizzle ORM, LibSQL/SQLite, `node:worker_threads` |
+| [`apps/ui`](apps/ui) | Single Page Application (SPA) | Lit Web Components, `@lit-labs/router`, Open Props CSS, Vite 8 |
+| [`apps/cli`](apps/cli) | Companion CLI sync agent (`romanager-sync`) | Node.js 26 native SEA, Rolldown, TypeScript 7, `@repo/shared` |
+| [`packages/shared`](packages/shared) | Shared domain models, types, and Zod schemas | TypeScript 7, Zod |
 | [`packages/ui-components`](packages/ui-components) | Design system & reusable web components | Lit Web Components, Open Props |
+| [`tests`](tests) | Isolated test suite (`@repo/tests`) | Vitest 5, Playwright BDD, JSDOM |
 
 ---
 
@@ -43,14 +44,16 @@ For comprehensive technical documentation, refer to the guides in the [`docs/`](
 - 📡 **[API Reference](docs/api-reference.md)**: Complete REST API documentation, endpoints, query parameters, payloads, and SSE stream contracts.
 - 🗄️ **[Database Schema](docs/database-schema.md)**: Entity-Relationship diagram, table schemas, relationships, and indexing.
 - 🎨 **[UI Components & Design System](docs/ui-components.md)**: Lit component catalog, routing table, and Open Props design tokens.
-- 📑 **[Architecture Decision Records (ADRs)](docs/adr/README.md)**: Records of key architectural decisions.
-- 🚀 **[Deno to Node.js Migration Plan](docs/migration/deno-to-node-migration-plan.md)**: Detailed technical roadmap for migrating to Node.js LTS, Vite + Oxc, and Node SEA.
+- 📑 **[Architecture Decision Records (ADRs)](docs/adr/README.md)**: Records of key architectural decisions:
+  - [ADR 0001: Migrate from Deno to Node.js](docs/adr/0001-migrate-from-deno-to-nodejs.md)
+  - [ADR 0002: CLI Standalone Binaries via Node SEA](docs/adr/0002-cli-standalone-binaries-via-node-sea.md)
+  - [ADR 0003: Modern Frontend Toolchain (Oxc, Vite 8, TypeScript 7)](docs/adr/0003-frontend-toolchain-oxc-vite-ts7.md)
 
 ---
 
 ## Companion CLI (`romanager-sync`)
 
-The Romanager Companion CLI is a standalone binary that runs on the actual emulation device (Batocera PC, Steam Deck, Raspberry Pi 4/5, Anbernic, or any Linux handheld running EmulationStation). It keeps the local storage in sync with a server-defined profile.
+The Romanager Companion CLI is a standalone binary that runs on emulation devices (Batocera PC, Steam Deck, Raspberry Pi, Anbernic, or any Linux handheld running EmulationStation). It keeps local storage in sync with a server-defined profile.
 
 ### Highlights
 - **Atomic Multi-File ROM Sets**: Games composed of multiple files (`.cue`+`.bin`, `.gdi`+tracks, `.m3u` playlists, multi-disc folders) sync, verify, and delete as single atomic units.
@@ -67,23 +70,20 @@ The Romanager Companion CLI is a standalone binary that runs on the actual emula
 3. Choose your device preset (`batocera`, `es-de`, or `retropie`), name the device, and set optional storage budgets or region priorities.
 4. Copy the generated enrollment command and API key.
 
-### 2. Building the CLI Binary
+### 2. Building the CLI Standalone Executable
 
-Compile a self-contained, native executable with zero runtime dependencies:
+Generate a standalone native executable with zero runtime dependencies using Node.js 26 native Single Executable Application (SEA) and Rolldown:
 
 ```bash
-# Compile for x86_64 Linux (PC Batocera, Steam Deck, x86 mini-PCs)
-deno task compile:cli
-
-# Compile for aarch64 Linux (Raspberry Pi 4/5, modern ARM handhelds/SBCs)
-deno task compile:cli:arm
+# Build standalone CLI binary
+pnpm run build:cli
 ```
 
-The compiled binaries will be output to `apps/cli/dist/romanager-sync-x86_64` and `apps/cli/dist/romanager-sync-aarch64`.
+The compiled binary will be output to `apps/cli/dist/romanager-sync`.
 
-Alternatively, run directly on any machine with Deno installed:
+Alternatively, run in development mode directly via `tsx`:
 ```bash
-deno run -A apps/cli/src/main.ts <command>
+pnpm --filter @repo/cli start -- <command>
 ```
 
 ### 3. Basic CLI Usage
@@ -156,8 +156,8 @@ romanager-sync adopt
 
 ### Prerequisites
 
-- **[Deno](https://deno.land/)** (v1.40+ or compatible)
-- **Node.js & npm** (for Drizzle Kit tooling and Playwright runners)
+- **[Node.js](https://nodejs.org/)** (v26 recommended, or v22 LTS)
+- **[pnpm](https://pnpm.io/)** (v11.8.0 or compatible)
 - *(Optional)* **RAWG API Key**: Get a free API key at [rawg.io/apidocs](https://rawg.io/apidocs) for metadata enrichment.
 
 ### Configuration
@@ -169,18 +169,23 @@ RAWG_API_KEY=your_rawg_api_key_here
 DB_URL=file:romanager.db
 ```
 
+Romanager automatically discovers and loads `.env` variables in both development (`pnpm dev`) and production runtime.
+
 ### Running Locally
 
 ```bash
-# Run both frontend and backend concurrently in watch mode
-deno task dev
+# Install dependencies
+pnpm install
+
+# Run both frontend and backend concurrently in dev mode
+pnpm dev
 
 # Or run services individually:
-deno task dev:api    # Start Hono API backend (http://localhost:8000)
-deno task dev:ui     # Start Vite dev server for Lit frontend
+pnpm dev:api    # Start Hono API backend (http://localhost:8000)
+pnpm dev:ui     # Start Vite dev server for Lit frontend (http://localhost:5173)
 ```
 
-Once started, navigate to `http://localhost:8000` (or the Vite dev port).
+Once started, navigate to `http://localhost:5173` (Vite dev server) or `http://localhost:8000` (API backend).
 
 ---
 
@@ -188,19 +193,22 @@ Once started, navigate to `http://localhost:8000` (or the Vite dev port).
 
 | Command | Description |
 | :--- | :--- |
-| `deno task dev` | Starts API server and UI dev server concurrently |
-| `deno task dev:api` | Runs API server with `--watch` on port 8000 |
-| `deno task dev:ui` | Starts frontend Vite dev server |
-| `deno task build:ui` | Builds the production bundle of the Lit frontend into `apps/ui/dist` |
-| `deno task compile:cli` | Compiles companion CLI into a standalone `x86_64` native binary |
-| `deno task compile:cli:arm` | Compiles companion CLI into a standalone `aarch64` native binary |
-| `deno task test` | Runs all unit and API test suites |
-| `deno task test:api` | Runs API and database test suite against an isolated `test.db` |
-| `deno task test:unit` | Runs unit test suite |
-| `deno task test:bdd` | Generates and runs Playwright BDD feature tests |
-| `deno task db:migrate` | Applies pending Drizzle migrations |
-| `deno task db:push` | Pushes Drizzle ORM schema changes directly to the database |
-| `deno task db:generate` | Generates Drizzle SQL migration files |
+| `pnpm dev` | Starts API backend and UI dev server concurrently |
+| `pnpm dev:api` | Starts API server with hot-reload via `tsx watch` |
+| `pnpm dev:ui` | Starts frontend Vite dev server |
+| `pnpm build` | Builds all packages and applications |
+| `pnpm build:ui` | Builds the production bundle of the Lit frontend into `apps/ui/dist` |
+| `pnpm build:cli` | Builds the standalone native CLI binary using Node 26 SEA |
+| `pnpm test` | Runs the full Vitest test suite |
+| `pnpm test:api` | Runs API and database test suite against isolated `test.db` |
+| `pnpm test:unit` | Runs unit test suite |
+| `pnpm test:migrations` | Verifies and replays Drizzle database migrations |
+| `pnpm test:e2e` | Generates BDD steps (`bddgen`) and runs Playwright E2E tests |
+| `pnpm run lint` | Runs type-aware linting with `oxlint` and `tsgolint` |
+| `pnpm run typecheck` | Runs TypeScript 7 typecheck across all workspace packages |
+| `pnpm db:migrate` | Applies pending Drizzle migrations |
+| `pnpm db:push` | Pushes Drizzle ORM schema changes directly to the database |
+| `pnpm db:generate` | Generates Drizzle SQL migration files |
 
 ---
 
