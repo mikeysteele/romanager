@@ -59,18 +59,32 @@ export default function createServer(romsDir: string, appDir: string) {
     app.route("/api/sync", syncRouter);
     app.route("/api/keys", keysRouter);
 
+    // Content-Type mapping for SPA assets
+    const getContentType = (p: string) => {
+        if (p.endsWith(".js") || p.endsWith(".mjs")) return "application/javascript";
+        if (p.endsWith(".css")) return "text/css";
+        if (p.endsWith(".html")) return "text/html";
+        if (p.endsWith(".json")) return "application/json";
+        if (p.endsWith(".svg")) return "image/svg+xml";
+        if (p.endsWith(".png")) return "image/png";
+        if (p.endsWith(".jpg") || p.endsWith(".jpeg")) return "image/jpeg";
+        if (p.endsWith(".wasm")) return "application/wasm";
+        if (p.endsWith(".woff2")) return "font/woff2";
+        return "application/octet-stream";
+    };
+
     // Serve frontend SPA
     app.use("/*", async (c, next) => {
-        const path = `${appDir}${c.req.path}`;
+        const filePath = `${appDir}${c.req.path}`;
         try {
-            const fileStat = await stat(path);
+            const fileStat = await stat(filePath);
             if (fileStat.isDirectory()) {
-                const indexPath = path.endsWith("/") ? `${path}index.html` : `${path}/index.html`;
+                const indexPath = filePath.endsWith("/") ? `${filePath}index.html` : `${filePath}/index.html`;
                 const data = await readFile(indexPath);
                 return c.body(data, 200, { "Content-Type": "text/html" });
             }
-            const data = await readFile(path);
-            return c.body(data);
+            const data = await readFile(filePath);
+            return c.body(data, 200, { "Content-Type": getContentType(filePath) });
         } catch {
             // SPA fallback to index.html
             try {
