@@ -15,6 +15,9 @@ g.Event = dom.window.Event;
 g.CustomEvent = dom.window.CustomEvent;
 g.Node = dom.window.Node;
 g.HTMLDialogElement = dom.window.HTMLDialogElement;
+g.addEventListener = dom.window.addEventListener.bind(dom.window);
+g.removeEventListener = dom.window.removeEventListener.bind(dom.window);
+g.dispatchEvent = dom.window.dispatchEvent.bind(dom.window);
 
 // Shim HTMLDialogElement showModal and close for JSDOM
 if (dom.window.HTMLDialogElement) {

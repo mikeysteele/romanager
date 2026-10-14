@@ -2,6 +2,7 @@
   "name": "romanager",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Self-hosted retro ROM manager and companion sync daemon",
   "scripts": {
     "dev": "pnpm --parallel --filter @romanager/ui --filter @romanager/api dev",
@@ -39,7 +40,8 @@
     "rolldown": "^1.2.13",
     "tsx": "^4.19.2",
     "typescript": "^7.0.2",
-    "vitest": "^2.1.8",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4",
     "zod": "^3.25.76"
   }
 }
