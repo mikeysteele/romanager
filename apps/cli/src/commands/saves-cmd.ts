@@ -16,7 +16,7 @@ export interface SavesCommandOptions {
 
 export async function runSaves(options: SavesCommandOptions): Promise<void> {
   const config = await loadConfig(options.configPath);
-  const statePath = getStatePath(options.configPath || "");
+  const statePath = getStatePath(options.configPath);
   const state = await loadState(statePath);
 
   const serverBase = config.server.replace(/\/+$/, "");

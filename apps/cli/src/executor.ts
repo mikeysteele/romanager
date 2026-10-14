@@ -1,5 +1,5 @@
 import { dirname, resolve } from "node:path";
-import { mkdir, link, copyFile, rename, rm, stat } from "node:fs/promises";
+import { mkdir, link, copyFile, cp, rename, rm, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Manifest } from "@repo/shared";
@@ -137,7 +137,7 @@ export async function executeSyncPlan(
           await rename(stagingDir, targetDir);
         } catch {
           // Fallback if renaming across boundaries
-          await copyFile(stagingDir, targetDir);
+          await cp(stagingDir, targetDir, { recursive: true, force: true });
           await rm(stagingDir, { recursive: true, force: true });
         }
       } else {

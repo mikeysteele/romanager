@@ -25,7 +25,25 @@ export async function runWatch(options: WatchOptions): Promise<void> {
   console.log(`[Watch] Periodic fallback polling every ${Math.round(pollMs / 60000)} minute(s).`);
 
   let isSyncing = false;
+  let queuedSyncReason: string | null = null;
   let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const performSync = async (reason: string) => {
+    isSyncing = true;
+    try {
+      console.log(`[Watch] Triggering sync (${reason})...`);
+      await runSync({ configPath: options.configPath, quiet: options.quiet });
+    } catch (e) {
+      console.error(`[Watch] Sync error: ${e}`);
+    } finally {
+      isSyncing = false;
+      if (queuedSyncReason) {
+        const nextReason = queuedSyncReason;
+        queuedSyncReason = null;
+        triggerSync(nextReason);
+      }
+    }
+  };
 
   const triggerSync = (reason: string) => {
     if (syncDebounceTimer) {
@@ -34,17 +52,10 @@ export async function runWatch(options: WatchOptions): Promise<void> {
     syncDebounceTimer = setTimeout(async () => {
       if (isSyncing) {
         console.log(`[Watch] Sync already in progress, queuing after completion (${reason})...`);
+        queuedSyncReason = reason;
         return;
       }
-      isSyncing = true;
-      try {
-        console.log(`[Watch] Triggering sync (${reason})...`);
-        await runSync({ configPath: options.configPath, quiet: options.quiet });
-      } catch (e) {
-        console.error(`[Watch] Sync error: ${e}`);
-      } finally {
-        isSyncing = false;
-      }
+      await performSync(reason);
     }, 2000);
   };
 

@@ -35,8 +35,5 @@ export class UniversalWorker implements IWorker {
 }
 
 export function createWorker(moduleUrl: URL | string): IWorker {
-  if (typeof Worker !== "undefined") {
-    return new Worker(moduleUrl, { type: "module" }) as unknown as IWorker;
-  }
   return new UniversalWorker(moduleUrl);
 }

@@ -54,8 +54,4 @@ if (parentPort) {
     parentPort.on("message", (data: DeletionJob) => {
         handleDeletionJob(data, (msg) => parentPort!.postMessage(msg));
     });
-} else if (typeof self !== "undefined") {
-    (self as unknown as { onmessage: (e: { data: DeletionJob }) => void; postMessage: (msg: unknown) => void }).onmessage = async (e) => {
-        handleDeletionJob(e.data, (msg) => (self as unknown as { postMessage: (msg: unknown) => void }).postMessage(msg));
-    };
 }
