@@ -7,6 +7,7 @@ const __dirname = dirname(__filename);
 
 export default defineConfig({
   root: 'src',
+  envDir: resolve(__dirname, '../..'),
   plugins: [],
   resolve: {
     alias: {

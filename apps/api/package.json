@@ -6,8 +6,8 @@
     ".": "./main.ts"
   },
   "scripts": {
-    "dev": "tsx watch main.ts",
-    "start": "tsx main.ts",
+    "dev": "tsx watch --env-file-if-exists=.env --env-file-if-exists=../../.env main.ts",
+    "start": "tsx --env-file-if-exists=.env --env-file-if-exists=../../.env main.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push"

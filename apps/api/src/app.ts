@@ -1,3 +1,4 @@
+import "./env.ts";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { readFile, stat } from "node:fs/promises";
