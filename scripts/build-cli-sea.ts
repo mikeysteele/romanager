@@ -22,32 +22,13 @@ async function main() {
   const binaryName = isWindows ? "romanager-sync.exe" : "romanager-sync";
   const targetBinary = path.join(distDir, binaryName);
 
-  // 2. Build single executable
+  // 2. Build single executable via native Node 26 --build-sea
   console.log("🔨 Building Single Executable Application...");
-  try {
-    // Modern Node.js --build-sea
-    execSync("node --build-sea sea-config.json", {
-      cwd: cliDir,
-      stdio: "inherit",
-    });
-    await fs.chmod(targetBinary, 0o755);
-  } catch (err) {
-    console.warn("Falling back to manual postject injection:", err);
-    // Fallback: postject injection
-    const blobPath = path.join(distDir, "sea-prep.blob");
-    execSync("node --experimental-sea-config sea-config.json", {
-      cwd: cliDir,
-      stdio: "inherit",
-    });
-    await fs.copyFile(process.execPath, targetBinary);
-    await fs.chmod(targetBinary, 0o755);
-    const sentinelFuse = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
-    const machoFlag = process.platform === "darwin" ? "--macho-segment-name NODE_SEA" : "";
-    execSync(
-      `pnpm exec postject "${targetBinary}" NODE_SEA_BLOB "${blobPath}" --sentinel-fuse ${sentinelFuse} ${machoFlag} --overwrite`,
-      { stdio: "inherit" }
-    );
-  }
+  execSync("node --build-sea sea-config.json", {
+    cwd: cliDir,
+    stdio: "inherit",
+  });
+  await fs.chmod(targetBinary, 0o755);
 
   // 3. Codesign on macOS if needed
   if (process.platform === "darwin") {
