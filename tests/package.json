@@ -1,0 +1,33 @@
+{
+  "name": "@repo/tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./utils/assert": "./utils/assert.ts",
+    "./*": "./*"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:api": "vitest run api",
+    "test:unit": "vitest run unit",
+    "test:e2e": "bddgen && playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/shared": "workspace:*",
+    "@repo/ui-components": "workspace:*",
+    "drizzle-orm": "^0.38.3",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^26.6.5",
+    "jsdom": "^25.0.1",
+    "playwright-bdd": "^9.2.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

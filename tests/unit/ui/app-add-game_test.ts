@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-add-game/app-add-game.ts";
 import { AppAddGame } from "../../../apps/ui/src/components/app-add-game/app-add-game.ts";
 
-Deno.test("AppAddGame: search fetches results", async () => {
+test("AppAddGame: search fetches results", async () => {
     const component = new AppAddGame();
     component.query = "Sonic";
     

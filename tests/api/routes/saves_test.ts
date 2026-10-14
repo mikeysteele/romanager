@@ -1,4 +1,4 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { devicesRouter } from "../../../apps/api/src/routes/devices.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { devices, deviceProfiles } from "../../../apps/api/src/db/schema.ts";
@@ -6,7 +6,7 @@ import { createApiKeyRecord } from "../../../apps/api/src/auth.ts";
 import { eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 
-Deno.test("saves: upload, versioning, deduplication, and restore", async () => {
+test("saves: upload, versioning, deduplication, and restore", async () => {
   const testId = `save-${Date.now()}`;
   const devId = `dev-${testId}`;
 

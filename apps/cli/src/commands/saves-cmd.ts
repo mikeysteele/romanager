@@ -1,5 +1,5 @@
-import { dirname, resolve, relative } from "@std/path";
-import { ensureDir } from "@std/fs";
+import { dirname, resolve, relative } from "node:path";
+import { mkdir, readdir, stat, readFile, writeFile, copyFile } from "node:fs/promises";
 import { loadConfig } from "../config.ts";
 import { loadState, saveState, getStatePath } from "../state.ts";
 import { calculateFileSha1 } from "../hasher.ts";
@@ -67,18 +67,20 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
 
     for (const dir of saveDirs) {
       try {
-        for await (const entry of Deno.readDir(dir)) {
-          if (entry.isDirectory) {
+        const entries = await readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
             // subfolder per system
             const subDir = resolve(dir, entry.name);
-            for await (const subEntry of Deno.readDir(subDir)) {
-              if (subEntry.isFile && isSaveFile(subEntry.name)) {
+            const subEntries = await readdir(subDir, { withFileTypes: true });
+            for (const subEntry of subEntries) {
+              if (subEntry.isFile() && isSaveFile(subEntry.name)) {
                 const fullPath = resolve(subDir, subEntry.name);
                 const relPath = relative(config.paths.saves, fullPath).replace(/\\/g, "/");
                 discovered.push({ fullPath, relPath });
               }
             }
-          } else if (entry.isFile && isSaveFile(entry.name)) {
+          } else if (entry.isFile() && isSaveFile(entry.name)) {
             const fullPath = resolve(dir, entry.name);
             const relPath = entry.name;
             discovered.push({ fullPath, relPath });
@@ -97,9 +99,9 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
         continue;
       }
 
-      const stat = await Deno.stat(item.fullPath);
+      const s = await stat(item.fullPath);
       const sha1 = await calculateFileSha1(item.fullPath);
-      const mtime = stat.mtime ? stat.mtime.toISOString() : new Date().toISOString();
+      const mtime = s.mtime ? s.mtime.toISOString() : new Date().toISOString();
 
       const existingRecord = state.saves[item.relPath];
       if (existingRecord && existingRecord.sha1 === sha1) {
@@ -108,7 +110,7 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
       }
 
       console.log(`Pushing save: ${item.relPath}...`);
-      const fileBytes = await Deno.readFile(item.fullPath);
+      const fileBytes = await readFile(item.fullPath);
 
       const url = `${serverBase}/api/devices/me/saves/${encodeURIComponent(item.relPath)}`;
       const res = await fetch(url, {
@@ -129,7 +131,7 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
 
       state.saves[item.relPath] = {
         sha1,
-        mtime: stat.mtime?.getTime() || Date.now(),
+        mtime: s.mtime?.getTime() || Date.now(),
         pushedAt: new Date().toISOString(),
       };
       pushedCount++;
@@ -152,7 +154,7 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
     // Check if local file exists
     let localExists = false;
     try {
-      await Deno.stat(localPath);
+      await stat(localPath);
       localExists = true;
 
       if (!options.force) {
@@ -179,12 +181,12 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
     if (localExists) {
       const backupPath = `${localPath}.bak`;
       console.log(`Backing up current local save to ${backupPath}...`);
-      await Deno.copyFile(localPath, backupPath);
+      await copyFile(localPath, backupPath);
     }
 
-    await ensureDir(dirname(localPath));
+    await mkdir(dirname(localPath), { recursive: true });
     const data = await res.arrayBuffer();
-    await Deno.writeFile(localPath, new Uint8Array(data));
+    await writeFile(localPath, new Uint8Array(data));
 
     const sha1 = res.headers.get("x-sha1") || "";
     state.saves[relPath] = {

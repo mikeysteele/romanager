@@ -2,14 +2,14 @@ import { db } from "./db/index.ts";
 import { roms, romFiles } from "./db/schema.ts";
 import { eq } from "drizzle-orm";
 import { eventBus } from "./sse.ts";
+import { createWorker, type IWorker } from "./worker-adapter.ts";
 
-let deletionWorker: Worker | null = null;
+let deletionWorker: IWorker | null = null;
 
-export function getDeletionWorker(): Worker {
+export function getDeletionWorker(): IWorker {
     if (!deletionWorker) {
-        deletionWorker = new Worker(
-            new URL("./workers/deletion.worker.ts", import.meta.url).href,
-            { type: "module" }
+        deletionWorker = createWorker(
+            new URL("./workers/deletion.worker.ts", import.meta.url)
         );
 
         deletionWorker.onmessage = async (e) => {
@@ -26,7 +26,7 @@ export function getDeletionWorker(): Worker {
                     eventBus.emit('sse-message', { type: 'done', action: 'game-deleted', id });
                 }
             } catch (err) {
-                console.error(`[Main] Failed to finalize DB deletion for ${type} ${id}`, err);
+                console.error("[Main] Failed to finalize DB deletion for %s %s:", type, id, err);
             }
         };
 

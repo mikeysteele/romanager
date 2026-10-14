@@ -1,4 +1,5 @@
 import { z } from "zod";
+export { z };
 
 export const PlatformSchema = z.object({
   id: z.string(),

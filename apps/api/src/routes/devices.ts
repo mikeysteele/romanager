@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { db } from "../db/index.ts";
 import { devices, deviceProfiles, profileRules } from "../db/schema.ts";
 import { eq, asc } from "drizzle-orm";

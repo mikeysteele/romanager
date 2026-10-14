@@ -1,4 +1,6 @@
-import { parseArgs } from "jsr:@std/cli@^0.217.0/parse_args";
+import { parseArgs } from "node:util";
+import process from "node:process";
+
 import { runInit } from "./commands/init.ts";
 import { runStatus } from "./commands/status.ts";
 import { runSync } from "./commands/sync.ts";
@@ -37,16 +39,33 @@ Global Options:
   --version         Show version
 `;
 
-export async function main(args: string[] = Deno.args): Promise<void> {
-  const flags = parseArgs(args, {
-    string: ["config", "server", "key", "preset", "system", "only", "poll"],
-    boolean: ["json", "quiet", "verbose", "dry-run", "help", "version", "force"],
-    alias: {
-      h: "help",
-      q: "quiet",
-      v: "verbose",
+export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
+  const parsed = parseArgs({
+    args,
+    options: {
+      config: { type: "string" },
+      server: { type: "string" },
+      key: { type: "string" },
+      preset: { type: "string" },
+      system: { type: "string" },
+      only: { type: "string" },
+      poll: { type: "string" },
+      json: { type: "boolean" },
+      quiet: { type: "boolean", short: "q" },
+      verbose: { type: "boolean", short: "v" },
+      "dry-run": { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+      version: { type: "boolean" },
+      force: { type: "boolean" },
     },
+    allowPositionals: true,
+    strict: false,
   });
+
+  const flags: Record<string, any> = {
+    ...parsed.values,
+    _: parsed.positionals,
+  };
 
   if (flags.version) {
     console.log("romanager-sync 1.0.0");
@@ -125,7 +144,7 @@ export async function main(args: string[] = Deno.args): Promise<void> {
         const action = subArgs[0] as "push" | "list" | "restore";
         if (action !== "push" && action !== "list" && action !== "restore") {
           console.error("Usage: romanager-sync saves push|list|restore [options]");
-          Deno.exit(1);
+          process.exit(1);
         }
         await runSaves({
           action,
@@ -143,7 +162,7 @@ export async function main(args: string[] = Deno.args): Promise<void> {
         const action = subArgs[0] as "get" | "set";
         if (action !== "get" && action !== "set") {
           console.error("Usage: romanager-sync config get|set <key> [value]");
-          Deno.exit(1);
+          process.exit(1);
         }
         await runConfig(action, subArgs[1], subArgs[2], flags.config);
         break;
@@ -154,19 +173,19 @@ export async function main(args: string[] = Deno.args): Promise<void> {
         if (action === "set-key") {
           if (!subArgs[1]) {
             console.error("Usage: romanager-sync auth set-key <new-key>");
-            Deno.exit(1);
+            process.exit(1);
           }
           await runAuthSetKey(subArgs[1], flags.config);
         } else {
           console.error("Unknown auth action. Available: set-key");
-          Deno.exit(1);
+          process.exit(1);
         }
         break;
       }
 
       default:
         console.error(`Unknown command: '${command}'. Run 'romanager-sync --help' for usage.`);
-        Deno.exit(1);
+        process.exit(1);
     }
   } catch (err: unknown) {
     if (err instanceof CliError) {
@@ -175,7 +194,7 @@ export async function main(args: string[] = Deno.args): Promise<void> {
       } else {
         console.error(`[Error ${err.exitCode}] ${err.message}`);
       }
-      Deno.exit(err.exitCode);
+      process.exit(err.exitCode);
     }
 
     const message = err instanceof Error ? err.message : String(err);
@@ -184,10 +203,13 @@ export async function main(args: string[] = Deno.args): Promise<void> {
     } else {
       console.error(`[Error] ${message}`);
     }
-    Deno.exit(1);
+    process.exit(1);
   }
 }
 
-if (import.meta.main) {
-  await main();
+if (!process.env.VITEST) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

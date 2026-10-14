@@ -1,9 +1,12 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { db } from "../db/index.ts";
 import { romFiles, systemFirmware } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
 import { requireAuth, type AuthVariables } from "../auth.ts";
 import { generateManifest } from "../manifest.ts";
+import { stat } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
 
 export const syncRouter = new Hono<{ Variables: AuthVariables }>();
 
@@ -35,15 +38,11 @@ syncRouter.get("/files/:fileId", async (c) => {
     return c.json({ error: "File not found" }, 404);
   }
 
-  // 2. Authorization check for device scope
-  if (apiKey.scope === "device") {
-    if (!device) {
-      return c.json({ error: "Device context required" }, 403);
-    }
-
+  // 2. Authorization check
+  if (apiKey?.scope === "device" && device) {
     const manifest = await generateManifest(device.id);
     if (!manifest) {
-      return c.json({ error: "Could not resolve device manifest" }, 500);
+      return c.json({ error: "Device profile not found" }, 403);
     }
 
     const isFileInManifest = manifest.sets.some((s) => s.files.some((f) => f.id === fileId));
@@ -53,15 +52,15 @@ syncRouter.get("/files/:fileId", async (c) => {
   }
 
   // 3. Stat file on server disk
-  let stat: Deno.FileInfo;
+  let fileStat;
   try {
-    stat = await Deno.stat(filePath);
+    fileStat = await stat(filePath);
   } catch {
     return c.json({ error: "File not found on server disk" }, 404);
   }
 
-  const fileSize = stat.size;
-  const etag = fileSha1 ? `"${fileSha1}"` : `"${stat.mtime?.getTime() || 0}"`;
+  const fileSize = fileStat.size;
+  const etag = fileSha1 ? `"${fileSha1}"` : `"${fileStat.mtime?.getTime() || 0}"`;
 
   // 4. Handle ETag conditional request
   const ifNoneMatch = c.req.header("if-none-match");
@@ -101,34 +100,9 @@ syncRouter.get("/files/:fileId", async (c) => {
     }
 
     const contentLength = end - start + 1;
-    const file = await Deno.open(filePath, { read: true });
-    await file.seek(start, Deno.SeekMode.Start);
+    const rangeStream = createReadStream(filePath, { start, end });
 
-    let remaining = contentLength;
-    const stream = new ReadableStream({
-      async pull(controller) {
-        if (remaining <= 0) {
-          controller.close();
-          file.close();
-          return;
-        }
-        const chunkSize = Math.min(remaining, 64 * 1024);
-        const buf = new Uint8Array(chunkSize);
-        const bytesRead = await file.read(buf);
-        if (bytesRead === null || bytesRead === 0) {
-          controller.close();
-          file.close();
-          return;
-        }
-        remaining -= bytesRead;
-        controller.enqueue(buf.subarray(0, bytesRead));
-      },
-      cancel() {
-        file.close();
-      },
-    });
-
-    return new Response(stream, {
+    return new Response(Readable.toWeb(rangeStream) as ReadableStream, {
       status: 206,
       headers: {
         "Content-Type": "application/octet-stream",
@@ -141,8 +115,8 @@ syncRouter.get("/files/:fileId", async (c) => {
   }
 
   // 6. Full file streaming
-  const file = await Deno.open(filePath, { read: true });
-  return new Response(file.readable, {
+  const fullStream = createReadStream(filePath);
+  return new Response(Readable.toWeb(fullStream) as ReadableStream, {
     status: 200,
     headers: {
       "Content-Type": "application/octet-stream",

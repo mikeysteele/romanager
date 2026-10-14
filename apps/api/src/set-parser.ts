@@ -1,4 +1,5 @@
-import { dirname, join, relative } from "@std/path";
+import { dirname, join, relative } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
 
 export interface ParsedDescriptorFile {
   relPath: string; // path referenced inside descriptor
@@ -26,9 +27,10 @@ export async function findCaseInsensitive(baseDir: string, relPath: string): Pro
     let foundName: string | null = null;
 
     try {
-      for await (const entry of Deno.readDir(currentDir)) {
-        if (entry.name.toLowerCase() === part) {
-          foundName = entry.name;
+      const entries = await readdir(currentDir);
+      for (const entry of entries) {
+        if (entry.toLowerCase() === part) {
+          foundName = entry;
           break;
         }
       }
@@ -48,7 +50,7 @@ export async function findCaseInsensitive(baseDir: string, relPath: string): Pro
  */
 export async function parseCueFile(cueFilePath: string): Promise<ParsedDescriptorResult> {
   const dir = dirname(cueFilePath);
-  const content = await Deno.readTextFile(cueFilePath);
+  const content = await readFile(cueFilePath, "utf-8");
   const lines = content.split(/\r?\n/);
   const fileRegex = /^\s*FILE\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i;
 
@@ -86,7 +88,7 @@ export async function parseCueFile(cueFilePath: string): Promise<ParsedDescripto
  */
 export async function parseGdiFile(gdiFilePath: string): Promise<ParsedDescriptorResult> {
   const dir = dirname(gdiFilePath);
-  const content = await Deno.readTextFile(gdiFilePath);
+  const content = await readFile(gdiFilePath, "utf-8");
   const lines = content.split(/\r?\n/);
   const gdiRegex = /^\s*\d+\s+\d+\s+\d+\s+\d+\s+(?:"([^"]+)"|'([^']+)'|(\S+))/;
 
@@ -125,7 +127,7 @@ export async function parseGdiFile(gdiFilePath: string): Promise<ParsedDescripto
  */
 export async function parseM3uFile(m3uFilePath: string): Promise<ParsedDescriptorResult> {
   const dir = dirname(m3uFilePath);
-  const content = await Deno.readTextFile(m3uFilePath);
+  const content = await readFile(m3uFilePath, "utf-8");
   const lines = content.split(/\r?\n/);
 
   const files: ParsedDescriptorFile[] = [];

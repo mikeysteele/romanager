@@ -1,8 +1,8 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import type { DataTable, ColumnDef } from "../../../packages/ui-components/src/data-table/data-table.ts";
 
-Deno.test("DataTable: renders empty state when no columns", async () => {
+test("DataTable: renders empty state when no columns", async () => {
     // Ensure JSDOM is setup before loading Lit elements
     await import("../../../packages/ui-components/src/data-table/data-table.ts");
     
@@ -18,7 +18,7 @@ Deno.test("DataTable: renders empty state when no columns", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("DataTable: renders empty state when no data", async () => {
+test("DataTable: renders empty state when no data", async () => {
     const el = document.createElement('data-table') as DataTable<{ id: string } & Record<string, unknown>>;
     document.body.appendChild(el);
     el.columns = [{ header: "Name", key: "name" }] as ColumnDef<{ id: string } & Record<string, unknown>>[];

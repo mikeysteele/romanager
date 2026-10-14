@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-header/app-header.ts";
 import type { AppHeader } from "../../../apps/ui/src/components/app-header/app-header.ts";
 
-Deno.test("AppHeader: renders brand and search bar", async () => {
+test("AppHeader: renders brand and search bar", async () => {
     const el = document.createElement("app-header") as AppHeader;
     document.body.appendChild(el);
     await el.updateComplete;

@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { db } from "./db/index.ts";
 import { apiKeys, devices } from "./db/schema.ts";
 import { eq, and, isNull } from "drizzle-orm";
-import type { Context, Next } from "@hono/hono";
+import type { Context, Next } from "hono";
 
 const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 

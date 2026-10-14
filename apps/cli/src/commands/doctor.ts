@@ -1,4 +1,5 @@
-import { resolve } from "@std/path";
+import { resolve } from "node:path";
+import { stat, writeFile, rm, readdir } from "node:fs/promises";
 import { loadConfig, getDefaultConfigPath } from "../config.ts";
 import { ApiClient } from "../api-client.ts";
 import { getFreeDiskBytes } from "../planner.ts";
@@ -87,8 +88,9 @@ export async function runDoctor(options: DoctorOptions): Promise<void> {
   if (config) {
     for (const [key, dirPath] of Object.entries(config.paths)) {
       try {
-        const stat = await Deno.stat(dirPath);
-        if (!stat.isDirectory) {
+        const s = await stat(dirPath);
+        const isDir = typeof s.isDirectory === "function" ? s.isDirectory() : Boolean((s as any).isDirectory);
+        if (!isDir) {
           checks.push({
             name: `Path (${key})`,
             status: "fail",
@@ -99,8 +101,8 @@ export async function runDoctor(options: DoctorOptions): Promise<void> {
 
         // Test write permission
         const testFile = resolve(dirPath, `.romanager-write-test-${Date.now()}`);
-        await Deno.writeTextFile(testFile, "test");
-        await Deno.remove(testFile);
+        await writeFile(testFile, "test");
+        await rm(testFile, { force: true });
 
         checks.push({
           name: `Path (${key})`,
@@ -143,8 +145,9 @@ export async function runDoctor(options: DoctorOptions): Promise<void> {
     try {
       const stagingDir = resolve(config.paths.roms, ".romanager-staging");
       let count = 0;
-      for await (const entry of Deno.readDir(stagingDir)) {
-        if (entry.isDirectory) count++;
+      const entries = await readdir(stagingDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) count++;
       }
       if (count > 0) {
         checks.push({

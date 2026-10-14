@@ -1,9 +1,9 @@
 import "./setup.ts";
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-import/app-import.ts";
 import { AppImport } from "../../../apps/ui/src/components/app-import/app-import.ts";
 
-Deno.test("AppImport: setting selectedFile triggers search setup", () => {
+test("AppImport: setting selectedFile triggers search setup", () => {
     const component = new AppImport();
     
     // Test direct setup
@@ -11,7 +11,7 @@ Deno.test("AppImport: setting selectedFile triggers search setup", () => {
     assertEquals(component.searchQuery, "Super Mario");
 });
 
-Deno.test("AppImport: closeModal resets state", () => {
+test("AppImport: closeModal resets state", () => {
     const component = new AppImport();
     component.selectedFile = { id: "1", filename: "test", path: "test", size: 1 };
     component.selectedGame = { identifier: "1", title: "test" };
@@ -24,7 +24,7 @@ Deno.test("AppImport: closeModal resets state", () => {
     assertEquals(component.searchQuery, "");
 });
 
-Deno.test("AppImport: renders HTML dialog and opens when selectedFile is set", async () => {
+test("AppImport: renders HTML dialog and opens when selectedFile is set", async () => {
     const el = document.createElement("app-import") as AppImport;
     document.body.appendChild(el);
     await el.updateComplete;
@@ -51,7 +51,7 @@ Deno.test("AppImport: renders HTML dialog and opens when selectedFile is set", a
     document.body.removeChild(el);
 });
 
-Deno.test("AppImport: handleSearch parses RAWG search results with normalized platform objects", async () => {
+test("AppImport: handleSearch parses RAWG search results with normalized platform objects", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (url: string | URL | Request) => {
         if (url.toString().includes("/api/metadata/search")) {
@@ -84,7 +84,7 @@ Deno.test("AppImport: handleSearch parses RAWG search results with normalized pl
     globalThis.fetch = originalFetch;
 });
 
-Deno.test("AppImport: renders multiple grouped files in dialog", async () => {
+test("AppImport: renders multiple grouped files in dialog", async () => {
     const el = document.createElement("app-import") as AppImport;
     document.body.appendChild(el);
     await el.updateComplete;
@@ -107,7 +107,7 @@ Deno.test("AppImport: renders multiple grouped files in dialog", async () => {
     document.body.removeChild(el);
 });
 
-Deno.test("AppImport: detects companion files and adds to group", async () => {
+test("AppImport: detects companion files and adds to group", async () => {
     const el = document.createElement("app-import") as AppImport;
     document.body.appendChild(el);
     await el.updateComplete;

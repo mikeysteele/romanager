@@ -1,4 +1,4 @@
-import { Hono, type Context } from "@hono/hono";
+import { Hono, type Context } from "hono";
 import { db } from "../db/index.ts";
 import { scannedFiles } from "../db/schema.ts";
 import { eq, inArray } from "drizzle-orm";

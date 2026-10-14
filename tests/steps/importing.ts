@@ -53,7 +53,7 @@ Given('I have a file located at {string}', async ({ $test: _test }, filePath: st
     await fs.writeFile(realPath, 'dummy content');
 });
 
-When('I scan the {string} directory', async ({ request }) => {
+When('I scan the {string} directory', async ({ request }, _dir: string) => {
     const res = await request.post('/api/settings', {
         data: { key: 'roms_dir', value: TEST_ROOT }
     });

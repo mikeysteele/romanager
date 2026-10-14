@@ -1,5 +1,5 @@
-import { dirname, resolve } from "@std/path";
-import { ensureDir } from "@std/fs";
+import { dirname, resolve } from "node:path";
+import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 
 export interface StateFileRecord {
   sha1: string;
@@ -35,7 +35,7 @@ export function getStatePath(configPath: string): string {
 
 export async function loadState(statePath: string): Promise<CliState> {
   try {
-    const raw = await Deno.readTextFile(statePath);
+    const raw = await readFile(statePath, "utf-8");
     return JSON.parse(raw) as CliState;
   } catch {
     return {
@@ -48,11 +48,11 @@ export async function loadState(statePath: string): Promise<CliState> {
 }
 
 export async function saveState(state: CliState, statePath: string): Promise<void> {
-  await ensureDir(dirname(statePath));
+  await mkdir(dirname(statePath), { recursive: true });
   const tempPath = `${statePath}.tmp.${Date.now()}`;
   const json = JSON.stringify(state, null, 2);
 
   // Write to temporary file first, then atomically rename
-  await Deno.writeTextFile(tempPath, json, { mode: 0o600 });
-  await Deno.rename(tempPath, statePath);
+  await writeFile(tempPath, json, { mode: 0o600 });
+  await rename(tempPath, statePath);
 }

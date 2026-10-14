@@ -4,7 +4,7 @@ import { ApiClient } from "../api-client.ts";
 export async function runAuthSetKey(newKey: string, configPath?: string): Promise<void> {
   if (!newKey || !newKey.startsWith("rmg_")) {
     console.error("Invalid API key format. Expected 'rmg_...'");
-    Deno.exit(1);
+    process.exit(1);
   }
 
   const config = await loadConfig(configPath);

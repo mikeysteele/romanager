@@ -51,7 +51,7 @@ export async function searchMetadata(query: string): Promise<Game[]> {
     return cached.data;
   }
 
-  const apiKey = Deno.env.get("RAWG_API_KEY");
+  const apiKey = process.env.RAWG_API_KEY;
   if (!apiKey) {
     console.warn("RAWG_API_KEY environment variable is not set. Metadata search will return empty results.");
     return [];
@@ -134,7 +134,7 @@ export async function fetchPlatforms(): Promise<RawgPlatform[]> {
     return platformCache.data;
   }
 
-  const apiKey = Deno.env.get("RAWG_API_KEY");
+  const apiKey = process.env.RAWG_API_KEY;
   if (!apiKey) {
     console.warn("RAWG_API_KEY environment variable is not set. Platform search will return empty results.");
     return [];

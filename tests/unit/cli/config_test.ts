@@ -1,4 +1,7 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import {
   saveConfig,
   loadConfig,
@@ -6,8 +9,8 @@ import {
   type CliConfig,
 } from "../../../apps/cli/src/config.ts";
 
-Deno.test("cli config: saves and loads with 0600 mode", async () => {
-  const tempDir = await Deno.makeTempDir();
+test("cli config: saves and loads with 0600 mode", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "romanager-config-test-"));
   const configPath = `${tempDir}/config.json`;
 
   const dummyConfig: CliConfig = {
@@ -37,7 +40,7 @@ Deno.test("cli config: saves and loads with 0600 mode", async () => {
     assertEquals(saved, configPath);
 
     // Verify file mode on Linux
-    const stat = await Deno.stat(configPath);
+    const stat = await fs.stat(configPath);
     if (stat.mode !== null) {
       // 0o600 is 384 in decimal
       assertEquals(stat.mode & 0o777, 0o600);
@@ -48,6 +51,6 @@ Deno.test("cli config: saves and loads with 0600 mode", async () => {
     assertEquals(loaded.apiKey, "rmg_test_key_12345");
     assertEquals(loaded.paths.roms, "/userdata/roms");
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await fs.rm(tempDir, { recursive: true, force: true });
   }
 });

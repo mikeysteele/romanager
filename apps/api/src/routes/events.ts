@@ -1,5 +1,5 @@
-import { Hono } from "@hono/hono";
-import { streamSSE } from "@hono/hono/streaming";
+import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { eventBus } from "../sse.ts";
 
 export const eventsRouter = new Hono();

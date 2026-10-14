@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { getGames, getGamesBySystem, getGameById, getGameBySlug, searchLocalGames, deleteGameFromDb } from "../db/queries.ts";
 import { db } from "../db/index.ts";
 import { games, platforms, gamePlatforms, systems } from "../db/schema.ts";
@@ -81,7 +81,7 @@ gamesRouter.delete("/:id", async (c) => {
 
         return c.json({ success: true, message: `Game ${id} deleted.` }, 202);
     } catch (e) {
-        console.error(`Failed to dispatch game deletion for ${id}:`, e);
+        console.error("Failed to dispatch game deletion for %s:", id, e);
         return c.json({ error: "Failed to dispatch game deletion." }, 500);
     }
 });

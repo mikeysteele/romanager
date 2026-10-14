@@ -1,8 +1,13 @@
-import { resolve } from "@std/path";
+import { resolve } from "node:path";
+import { stat, statfs } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import type { Manifest, ManifestSet, ManifestFile } from "@repo/shared";
 import type { CliConfig } from "./config.ts";
 import type { CliState, StateSetRecord } from "./state.ts";
 import { calculateFileSha1 } from "./hasher.ts";
+
+const execFileAsync = promisify(execFile);
 
 export interface PlanItem {
   set: ManifestSet;
@@ -31,23 +36,22 @@ export interface SyncPlan {
 
 export async function getFreeDiskBytes(dirPath: string): Promise<number | null> {
   try {
-    const cmd = new Deno.Command("df", {
-      args: ["-B1", dirPath],
-      stdout: "piped",
-      stderr: "null",
-    });
-    const output = await cmd.output();
-    if (!output.success) return null;
-    const text = new TextDecoder().decode(output.stdout);
-    const lines = text.trim().split("\n");
-    if (lines.length >= 2) {
-      const parts = lines[1].trim().split(/\s+/);
-      if (parts.length >= 4) {
-        return parseInt(parts[3], 10);
-      }
-    }
+    const stats = await statfs(dirPath);
+    return Number(stats.bfree) * Number(stats.bsize);
   } catch {
-    // fallback
+    // fallback to df command on unix
+    try {
+      const { stdout } = await execFileAsync("df", ["-B1", dirPath]);
+      const lines = stdout.trim().split("\n");
+      if (lines.length >= 2) {
+        const parts = lines[1].trim().split(/\s+/);
+        if (parts.length >= 4) {
+          return parseInt(parts[3], 10);
+        }
+      }
+    } catch {
+      // fallback
+    }
   }
   return null;
 }
@@ -95,8 +99,9 @@ export async function createSyncPlan(
       for (const f of set.files) {
         const fullPath = resolve(rootDir, f.path);
         try {
-          const stat = await Deno.stat(fullPath);
-          if (stat.isFile || stat.isDirectory) {
+          const s = await stat(fullPath);
+          const isFileOrDir = typeof s.isFile === "function" ? (s.isFile() || s.isDirectory()) : Boolean((s as any).isFile || (s as any).isDirectory);
+          if (isFileOrDir) {
             existingPaths.push(f.path);
           }
         } catch {
@@ -129,12 +134,12 @@ export async function createSyncPlan(
         for (const f of set.files) {
           const fullPath = resolve(rootDir, f.path);
           try {
-            const stat = await Deno.stat(fullPath);
+            const s = await stat(fullPath);
             const recorded = stateRecord.files[f.path];
             if (
               !recorded ||
-              stat.size !== recorded.size ||
-              (stat.mtime && recorded.mtime && stat.mtime.getTime() !== recorded.mtime)
+              s.size !== recorded.size ||
+              (s.mtime && recorded.mtime && s.mtime.getTime() !== recorded.mtime)
             ) {
               const actualSha1 = await calculateFileSha1(fullPath);
               if (f.sha1 && actualSha1.toLowerCase() !== f.sha1.toLowerCase()) {
@@ -173,10 +178,10 @@ export async function createSyncPlan(
         for (const [relPath, rec] of Object.entries(stateRecord.files)) {
           const fullPath = resolve(rootDir, relPath);
           try {
-            const stat = await Deno.stat(fullPath);
+            const s = await stat(fullPath);
             if (
-              stat.size !== rec.size ||
-              (stat.mtime && rec.mtime && stat.mtime.getTime() !== rec.mtime)
+              s.size !== rec.size ||
+              (s.mtime && rec.mtime && s.mtime.getTime() !== rec.mtime)
             ) {
               const actualSha1 = await calculateFileSha1(fullPath);
               if (actualSha1.toLowerCase() !== rec.sha1.toLowerCase()) {
@@ -205,7 +210,7 @@ export async function createSyncPlan(
             } else {
               // verify it actually exists on disk
               try {
-                await Deno.stat(resolve(rootDir, f.path));
+                await stat(resolve(rootDir, f.path));
               } catch {
                 filesToDownload.push(f);
               }
@@ -242,10 +247,10 @@ export async function createSyncPlan(
       for (const [relPath, rec] of Object.entries(stateRecord.files)) {
         const fullPath = resolve(rootDir, relPath);
         try {
-          const stat = await Deno.stat(fullPath);
+          const s = await stat(fullPath);
           if (
-            stat.size !== rec.size ||
-            (stat.mtime && rec.mtime && stat.mtime.getTime() !== rec.mtime)
+            s.size !== rec.size ||
+            (s.mtime && rec.mtime && s.mtime.getTime() !== rec.mtime)
           ) {
             const actualSha1 = await calculateFileSha1(fullPath);
             if (actualSha1.toLowerCase() !== rec.sha1.toLowerCase()) {

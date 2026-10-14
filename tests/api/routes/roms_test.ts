@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { romsRouter } from "../../../apps/api/src/routes/roms.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { roms, games, systems } from "../../../apps/api/src/db/schema.ts";
@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { RomSchema } from "@repo/shared";
 import { z } from "zod";
 
-Deno.test("GET / should return active roms conforming to RomSchema contract", async () => {
+test("GET / should return active roms conforming to RomSchema contract", async () => {
     const req = new Request("http://localhost/");
     const res = await romsRouter.request(req);
     assertEquals(res.status, 200);
@@ -15,7 +15,7 @@ Deno.test("GET / should return active roms conforming to RomSchema contract", as
     z.array(RomSchema).parse(json);
 });
 
-Deno.test("GET / with limit and offset should support pagination and conform to RomSchema", async () => {
+test("GET / with limit and offset should support pagination and conform to RomSchema", async () => {
     const req = new Request("http://localhost/?limit=1&offset=0");
     const res = await romsRouter.request(req);
     assertEquals(res.status, 200);
@@ -25,7 +25,7 @@ Deno.test("GET / with limit and offset should support pagination and conform to 
     z.array(RomSchema).parse(json);
 });
 
-Deno.test("GET /:id should return single rom details conforming to RomSchema", async () => {
+test("GET /:id should return single rom details conforming to RomSchema", async () => {
     const sysId = "test-system-roms-get";
     const gameId = "test-game-roms-get";
     const romId = "test-get-rom-" + Date.now();
@@ -58,13 +58,14 @@ Deno.test("GET /:id should return single rom details conforming to RomSchema", a
     }
 });
 
-Deno.test("DELETE /:id should mark rom as pendingDelete", async () => {
-    const sysId = "test-system-roms-del";
-    const gameId = "test-game-roms-del";
-    const dummyId = "test-delete-rom-" + Date.now();
+test("DELETE /:id should mark rom as pendingDelete", async () => {
+    const timestamp = Date.now();
+    const sysId = "test-system-roms-del-" + timestamp;
+    const gameId = "test-game-roms-del-" + timestamp;
+    const dummyId = "test-delete-rom-" + timestamp;
 
     // foreign key prep
-    await db.insert(systems).values({ id: sysId, name: "Sys", slug: "sys" }).onConflictDoNothing();
+    await db.insert(systems).values({ id: sysId, name: "Sys", slug: "sys-" + timestamp }).onConflictDoNothing();
     await db.insert(games).values({ id: gameId, name: "Game", slug: gameId }).onConflictDoNothing();
 
     await db.insert(roms).values({

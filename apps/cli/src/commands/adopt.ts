@@ -1,4 +1,5 @@
-import { resolve } from "@std/path";
+import { resolve } from "node:path";
+import { stat } from "node:fs/promises";
 import { loadConfig } from "../config.ts";
 import { loadState, saveState, getStatePath } from "../state.ts";
 import { ApiClient } from "../api-client.ts";
@@ -40,8 +41,8 @@ export async function runAdopt(options: AdoptOptions): Promise<void> {
     for (const f of set.files) {
       const fullPath = resolve(rootDir, f.path);
       try {
-        const stat = await Deno.stat(fullPath);
-        if (stat.size !== f.size) {
+        const s = await stat(fullPath);
+        if (s.size !== f.size) {
           allMatch = false;
           break;
         }
@@ -54,8 +55,8 @@ export async function runAdopt(options: AdoptOptions): Promise<void> {
 
         fileStats[f.path] = {
           sha1: actualSha1,
-          size: stat.size,
-          mtime: stat.mtime?.getTime() || Date.now(),
+          size: s.size,
+          mtime: s.mtime?.getTime() || Date.now(),
         };
       } catch {
         allMatch = false;

@@ -1,11 +1,11 @@
-import { assertEquals, assertNotEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals, assertNotEquals } from "@repo/tests/utils/assert";
 import { keysRouter } from "../../../apps/api/src/routes/keys.ts";
 import { verifyApiKey } from "../../../apps/api/src/auth.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { apiKeys } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
 
-Deno.test("keysRouter: list, create, and revoke API keys", async () => {
+test("keysRouter: list, create, and revoke API keys", async () => {
   const keyName = `Test Script Key ${Date.now()}`;
 
   // 1. Create key
@@ -36,6 +36,7 @@ Deno.test("keysRouter: list, create, and revoke API keys", async () => {
     const listData = await listRes.json() as Array<{ id: string; rawKey?: string; keyHash?: string; prefix?: string }>;
     const found = listData.find((k) => k.id === keyId);
     assertEquals(found !== undefined, true);
+    if (!found) throw new Error("Key not found in list");
     assertEquals(found.rawKey, undefined);
     assertEquals(found.keyHash, undefined);
     assertEquals(found.prefix, rawKey.slice(0, 8));

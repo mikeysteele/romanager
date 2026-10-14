@@ -1,9 +1,10 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
+import process from "node:process";
 import { metadataRouter } from "../../../apps/api/src/routes/metadata.ts";
 import { GameSchema, PlatformSchema } from "@repo/shared";
 import { z } from "zod";
 
-Deno.test("metadataRouter: GET /search handles empty query", async () => {
+test("metadataRouter: GET /search handles empty query", async () => {
     const req = new Request("http://localhost/search");
     const res = await metadataRouter.request(req);
     assertEquals(res.status, 200);
@@ -11,25 +12,26 @@ Deno.test("metadataRouter: GET /search handles empty query", async () => {
     assertEquals(json, []);
 });
 
-Deno.test("metadataRouter: GET /search without API key returns empty array safely", async () => {
-    const origKey = Deno.env.get("RAWG_API_KEY");
+test("metadataRouter: GET /search without API key returns empty array safely", async () => {
+    const origKey = process.env.RAWG_API_KEY;
     try {
-        Deno.env.delete("RAWG_API_KEY");
+        delete process.env.RAWG_API_KEY;
         const req = new Request("http://localhost/search?q=chrono");
         const res = await metadataRouter.request(req);
         assertEquals(res.status, 200);
         const json = await res.json();
         assertEquals(json, []);
     } finally {
-        if (origKey) Deno.env.set("RAWG_API_KEY", origKey);
+        if (origKey !== undefined) process.env.RAWG_API_KEY = origKey;
+        else delete process.env.RAWG_API_KEY;
     }
 });
 
-Deno.test("metadataRouter: GET /search with mocked RAWG returns GameSchema contract", async () => {
-    const origKey = Deno.env.get("RAWG_API_KEY");
+test("metadataRouter: GET /search with mocked RAWG returns GameSchema contract", async () => {
+    const origKey = process.env.RAWG_API_KEY;
     const origFetch = globalThis.fetch;
     try {
-        Deno.env.set("RAWG_API_KEY", "dummy-test-key");
+        process.env.RAWG_API_KEY = "dummy-test-key";
         globalThis.fetch = ((input: RequestInfo | URL) => {
             const urlStr = String(input);
             if (urlStr.includes("api.rawg.io/api/games")) {
@@ -39,25 +41,20 @@ Deno.test("metadataRouter: GET /search with mocked RAWG returns GameSchema contr
                         id: 1234,
                         slug: "chrono-trigger",
                         name: "Chrono Trigger",
-                        released: "1995-03-11",
-                        tba: false,
-                        background_image: "https://example.com/chrono.jpg",
-                        rating: 4.8,
-                        rating_top: 5,
-                        ratings_count: 500,
-                        added: 1200,
-                        playtime: 25,
-                        updated: "2024-01-01",
-                        platforms: [{
-                            platform: { id: 79, name: "SNES", slug: "snes" }
-                        }]
+                        description_raw: "A classic RPG",
+                        background_image: "https://example.com/ct.jpg",
+                        platforms: [{ platform: { id: 79, slug: "snes", name: "SNES" } }],
+                        genres: [{ name: "RPG" }],
+                        developers: [{ name: "Square" }],
+                        publishers: [{ name: "Square" }],
+                        released: "1995-03-11"
                     }]
                 }), { status: 200, headers: { "Content-Type": "application/json" } }));
             }
             return origFetch(input);
         }) as typeof fetch;
 
-        const req = new Request("http://localhost/search?q=chrono-test-mock");
+        const req = new Request("http://localhost/search?q=chrono");
         const res = await metadataRouter.request(req);
         assertEquals(res.status, 200);
         const json = await res.json();
@@ -67,16 +64,16 @@ Deno.test("metadataRouter: GET /search with mocked RAWG returns GameSchema contr
         assertEquals(games[0].slug, "chrono-trigger");
     } finally {
         globalThis.fetch = origFetch;
-        if (origKey) Deno.env.set("RAWG_API_KEY", origKey);
-        else Deno.env.delete("RAWG_API_KEY");
+        if (origKey !== undefined) process.env.RAWG_API_KEY = origKey;
+        else delete process.env.RAWG_API_KEY;
     }
 });
 
-Deno.test("metadataRouter: GET /platforms with mocked RAWG returns PlatformSchema contract", async () => {
-    const origKey = Deno.env.get("RAWG_API_KEY");
+test("metadataRouter: GET /platforms with mocked RAWG returns PlatformSchema contract", async () => {
+    const origKey = process.env.RAWG_API_KEY;
     const origFetch = globalThis.fetch;
     try {
-        Deno.env.set("RAWG_API_KEY", "dummy-test-key");
+        process.env.RAWG_API_KEY = "dummy-test-key";
         globalThis.fetch = ((input: RequestInfo | URL) => {
             const urlStr = String(input);
             if (urlStr.includes("api.rawg.io/api/platforms")) {
@@ -101,7 +98,7 @@ Deno.test("metadataRouter: GET /platforms with mocked RAWG returns PlatformSchem
         assertEquals(platforms[1].slug, "nes");
     } finally {
         globalThis.fetch = origFetch;
-        if (origKey) Deno.env.set("RAWG_API_KEY", origKey);
-        else Deno.env.delete("RAWG_API_KEY");
+        if (origKey !== undefined) process.env.RAWG_API_KEY = origKey;
+        else delete process.env.RAWG_API_KEY;
     }
 });

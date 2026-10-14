@@ -62,12 +62,12 @@ export async function runWatch(options: WatchOptions): Promise<void> {
     shouldRun = false;
     clearInterval(pollTimer);
     if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
-    Deno.exit(0);
+    process.exit(0);
   };
 
   try {
-    Deno.addSignalListener("SIGINT", handleShutdown);
-    Deno.addSignalListener("SIGTERM", handleShutdown);
+    process.on("SIGINT", handleShutdown);
+    process.on("SIGTERM", handleShutdown);
   } catch {
     // signal listener not supported on some platforms
   }

@@ -1,10 +1,10 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { importRouter } from "../../../apps/api/src/routes/import.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { scannedFiles, scannedSets, scannedSetFiles, roms, romFiles, systems } from "../../../apps/api/src/db/schema.ts";
 import { eq } from "drizzle-orm";
 
-Deno.test("POST / should require fields", async () => {
+test("POST / should require fields", async () => {
     const req = new Request("http://localhost/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -16,7 +16,7 @@ Deno.test("POST / should require fields", async () => {
     assertEquals(json.error, "Missing required fields");
 });
 
-Deno.test("POST / should import multiple scanned files under one game", async () => {
+test("POST / should import multiple scanned files under one game", async () => {
     // 1. Prepare system
     const testSysId = "test-sys-" + Date.now();
     const testTitle = "Crash Bandicoot Batch Test " + Date.now();
@@ -86,7 +86,7 @@ Deno.test("POST / should import multiple scanned files under one game", async ()
     }
 });
 
-Deno.test("POST / should support single scannedFileId for backward compatibility", async () => {
+test("POST / should support single scannedFileId for backward compatibility", async () => {
     const testSysId = "test-sys-single-" + Date.now();
     const testTitle = "Super Mario World " + Date.now();
     await db.insert(systems).values({
@@ -132,7 +132,7 @@ Deno.test("POST / should support single scannedFileId for backward compatibility
     }
 });
 
-Deno.test("POST / should import staged multi-file set with rom_files records", async () => {
+test("POST / should import staged multi-file set with rom_files records", async () => {
     const testSysId = "test-sys-set-" + Date.now();
     const testTitle = "Final Fantasy VII " + Date.now();
     await db.insert(systems).values({

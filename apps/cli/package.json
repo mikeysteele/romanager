@@ -1,0 +1,23 @@
+{
+  "name": "@repo/cli",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": {
+    "romanager-sync": "./src/main.ts"
+  },
+  "scripts": {
+    "build:bundle": "rolldown src/main.ts -d dist -f cjs --entryFileNames bundle.cjs --platform node",
+    "build:sea": "tsx ../../scripts/build-cli-sea.ts"
+  },
+  "dependencies": {
+    "@repo/shared": "workspace:*",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "postject": "^1.0.0-alpha.6",
+    "rolldown": "^1.2.13",
+    "tsx": "^4.19.2",
+    "typescript": "^7.0.2"
+  }
+}

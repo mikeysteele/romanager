@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 
 const crcTable = new Uint32Array(256);
 for (let i = 0; i < 256; i++) {
@@ -24,35 +26,28 @@ export async function calculateFileHashes(filePath: string): Promise<{
   size: number;
   mtime: number;
 }> {
-  const file = await Deno.open(filePath, { read: true });
-  const stat = await file.stat();
+  const fileStat = await stat(filePath);
   const sha1Hash = createHash("sha1");
   const md5Hash = createHash("md5");
 
   let crc = 0 ^ (-1);
-  const buffer = new Uint8Array(64 * 1024);
+  const stream = createReadStream(filePath);
 
-  try {
-    while (true) {
-      const bytesRead = await file.read(buffer);
-      if (bytesRead === null || bytesRead === 0) break;
-      const chunk = buffer.subarray(0, bytesRead);
-      sha1Hash.update(chunk);
-      md5Hash.update(chunk);
-      for (let i = 0; i < chunk.length; i++) {
-        crc = (crc >>> 8) ^ crcTable[(crc ^ chunk[i]) & 0xFF];
-      }
+  for await (const chunk of stream) {
+    const uint8Chunk = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+    sha1Hash.update(uint8Chunk);
+    md5Hash.update(uint8Chunk);
+    for (let i = 0; i < uint8Chunk.length; i++) {
+      crc = (crc >>> 8) ^ crcTable[(crc ^ uint8Chunk[i]) & 0xFF];
     }
-  } finally {
-    file.close();
   }
 
   const sha1 = sha1Hash.digest("hex");
   const md5 = md5Hash.digest("hex");
   const crc32 = ((crc ^ (-1)) >>> 0).toString(16).toUpperCase().padStart(8, "0");
-  const mtime = stat.mtime ? stat.mtime.getTime() : Date.now();
+  const mtime = fileStat.mtime ? fileStat.mtime.getTime() : Date.now();
 
-  return { sha1, md5, crc32, size: stat.size, mtime };
+  return { sha1, md5, crc32, size: fileStat.size, mtime };
 }
 
 export function calculateSetHash(files: Array<{ relPath: string; sha1?: string | null }>): string {

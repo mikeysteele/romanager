@@ -1,4 +1,7 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path, { dirname } from "node:path";
 import { executeSyncPlan } from "../../../apps/cli/src/executor.ts";
 import { createSyncPlan } from "../../../apps/cli/src/planner.ts";
 import { loadState, type CliState } from "../../../apps/cli/src/state.ts";
@@ -6,17 +9,15 @@ import { calculateFileSha1 } from "../../../apps/cli/src/hasher.ts";
 import type { Manifest, ManifestSet } from "@repo/shared";
 import type { CliConfig } from "../../../apps/cli/src/config.ts";
 import type { ApiClient } from "../../../apps/cli/src/api-client.ts";
-import { ensureDir } from "@std/fs";
-import { dirname } from "@std/path";
 
-Deno.test("cli executor: atomic installation, state recording, and clean removal", async () => {
-  const tempDir = await Deno.makeTempDir();
+test("cli executor: atomic installation, state recording, and clean removal", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "romanager-executor-test-"));
   const romsDir = `${tempDir}/roms`;
   const biosDir = `${tempDir}/bios`;
   const statePath = `${tempDir}/state.json`;
 
-  await Deno.mkdir(romsDir, { recursive: true });
-  await Deno.mkdir(biosDir, { recursive: true });
+  await fs.mkdir(romsDir, { recursive: true });
+  await fs.mkdir(biosDir, { recursive: true });
 
   const dummyConfig: CliConfig = {
     server: "http://localhost:8000",
@@ -46,15 +47,15 @@ Deno.test("cli executor: atomic installation, state recording, and clean removal
   const binContent = "DUMMY BINARY TRACK CONTENT 1234567890";
 
   // Compute test hashes
-  const cueTemp = await Deno.makeTempFile();
-  await Deno.writeTextFile(cueTemp, cueContent);
+  const cueTemp = path.join(tempDir, "cueTemp.tmp");
+  await fs.writeFile(cueTemp, cueContent, "utf-8");
   const cueSha1 = await calculateFileSha1(cueTemp);
-  await Deno.remove(cueTemp);
+  await fs.rm(cueTemp, { force: true });
 
-  const binTemp = await Deno.makeTempFile();
-  await Deno.writeTextFile(binTemp, binContent);
+  const binTemp = path.join(tempDir, "binTemp.tmp");
+  await fs.writeFile(binTemp, binContent, "utf-8");
   const binSha1 = await calculateFileSha1(binTemp);
-  await Deno.remove(binTemp);
+  await fs.rm(binTemp, { force: true });
 
   const cueSet: ManifestSet = {
     kind: "rom",
@@ -100,11 +101,11 @@ Deno.test("cli executor: atomic installation, state recording, and clean removal
   // Mock ApiClient
   const mockClient = {
     downloadFile: async (fileId: string, destPath: string, _sha1: string) => {
-      await ensureDir(dirname(destPath));
+      await fs.mkdir(dirname(destPath), { recursive: true });
       if (fileId === "cue-file-id") {
-        await Deno.writeTextFile(destPath, cueContent);
+        await fs.writeFile(destPath, cueContent, "utf-8");
       } else if (fileId === "bin-file-id") {
-        await Deno.writeTextFile(destPath, binContent);
+        await fs.writeFile(destPath, binContent, "utf-8");
       }
     },
     postReport: async () => {},
@@ -138,10 +139,10 @@ Deno.test("cli executor: atomic installation, state recording, and clean removal
     const installedCue = `${romsDir}/psx/Ridge Racer (USA)/game.cue`;
     const installedBin = `${romsDir}/psx/Ridge Racer (USA)/game.bin`;
 
-    const cueStat = await Deno.stat(installedCue);
-    const binStat = await Deno.stat(installedBin);
-    assertEquals(cueStat.isFile, true);
-    assertEquals(binStat.isFile, true);
+    const cueStat = await fs.stat(installedCue);
+    const binStat = await fs.stat(installedBin);
+    assertEquals(cueStat.isFile(), true);
+    assertEquals(binStat.isFile(), true);
 
     // Verify state.json
     const reloadedState = await loadState(statePath);
@@ -175,7 +176,7 @@ Deno.test("cli executor: atomic installation, state recording, and clean removal
     // Verify files are deleted
     let cueExists = true;
     try {
-      await Deno.stat(installedCue);
+      await fs.stat(installedCue);
     } catch {
       cueExists = false;
     }
@@ -185,6 +186,6 @@ Deno.test("cli executor: atomic installation, state recording, and clean removal
     const finalState = await loadState(statePath);
     assertEquals(finalState.sets["rom:psx-cue-set"], undefined);
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await fs.rm(tempDir, { recursive: true, force: true });
   }
 });

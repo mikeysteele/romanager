@@ -1,5 +1,7 @@
-import { dirname, resolve } from "@std/path";
-import { ensureDir } from "@std/fs";
+import { dirname, resolve } from "node:path";
+import fs from "node:fs";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import process from "node:process";
 
 export type DevicePreset = "batocera" | "esde" | "retropie";
 
@@ -32,7 +34,7 @@ export interface CliConfig {
 
 export function expandHome(pathStr: string): string {
   if (pathStr.startsWith("~")) {
-    const home = Deno.env.get("HOME") || "/root";
+    const home = process.env.HOME || "/root";
     return pathStr.replace(/^~/, home);
   }
   return pathStr;
@@ -40,7 +42,7 @@ export function expandHome(pathStr: string): string {
 
 export function detectPreset(): DevicePreset {
   try {
-    if (Deno.statSync("/userdata/system").isDirectory) {
+    if (fs.statSync("/userdata/system").isDirectory()) {
       return "batocera";
     }
   } catch {
@@ -48,10 +50,10 @@ export function detectPreset(): DevicePreset {
   }
 
   try {
-    const home = Deno.env.get("HOME") || "";
+    const home = process.env.HOME || "";
     if (
-      Deno.statSync("/opt/retropie").isDirectory ||
-      (home && Deno.statSync(`${home}/RetroPie`).isDirectory)
+      fs.statSync("/opt/retropie").isDirectory() ||
+      (home && fs.statSync(`${home}/RetroPie`).isDirectory())
     ) {
       return "retropie";
     }
@@ -94,33 +96,35 @@ export function getDefaultPostSyncHook(preset: DevicePreset): string | null {
 }
 
 export function getDefaultConfigPath(): string {
-  const envPath = Deno.env.get("ROMANAGER_CONFIG");
+  const envPath = process.env.ROMANAGER_CONFIG;
   if (envPath) return resolve(envPath);
 
   try {
-    if (Deno.statSync("/userdata/system").isDirectory) {
+    if (fs.statSync("/userdata/system").isDirectory()) {
       return "/userdata/system/configs/romanager/config.json";
     }
   } catch {
     // fallback
   }
 
-  const xdg = Deno.env.get("XDG_CONFIG_HOME");
+  const xdg = process.env.XDG_CONFIG_HOME;
   if (xdg) {
     return resolve(xdg, "romanager/config.json");
   }
 
-  const home = Deno.env.get("HOME") || ".";
+  const home = process.env.HOME || ".";
   return resolve(home, ".config/romanager/config.json");
 }
 
 export async function loadConfig(configPath?: string): Promise<CliConfig> {
   const targetPath = configPath ? resolve(configPath) : getDefaultConfigPath();
   try {
-    const raw = await Deno.readTextFile(targetPath);
+    const raw = await readFile(targetPath, "utf-8");
     return JSON.parse(raw) as CliConfig;
-  } catch (e) {
-    if (e instanceof Deno.errors.NotFound) {
+  } catch (e: any) {
+    const DenoObj = (globalThis as any).Deno;
+    const isNotFound = e.code === "ENOENT" || Boolean(DenoObj?.errors?.NotFound && e instanceof DenoObj.errors.NotFound);
+    if (isNotFound) {
       throw new Error(`Configuration file not found at ${targetPath}. Run 'romanager-sync init' first.`);
     }
     throw new Error(`Failed to read configuration at ${targetPath}: ${e}`);
@@ -129,10 +133,10 @@ export async function loadConfig(configPath?: string): Promise<CliConfig> {
 
 export async function saveConfig(config: CliConfig, configPath?: string): Promise<string> {
   const targetPath = configPath ? resolve(configPath) : getDefaultConfigPath();
-  await ensureDir(dirname(targetPath));
+  await mkdir(dirname(targetPath), { recursive: true });
   const json = JSON.stringify(config, null, 2);
 
   // Write with 0600 mode (read/write for owner only)
-  await Deno.writeTextFile(targetPath, json, { mode: 0o600 });
+  await writeFile(targetPath, json, { mode: 0o600 });
   return targetPath;
 }

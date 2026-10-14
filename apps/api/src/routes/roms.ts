@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { db } from "../db/index.ts";
 import { roms } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
@@ -39,7 +39,7 @@ romsRouter.get("/:id", async (c) => {
         if (!romData) return c.notFound();
         return c.json(romData);
     } catch (e) {
-        console.error(`Failed to fetch rom ${id}:`, e);
+        console.error("Failed to fetch rom %s:", id, e);
         return c.json({ error: "Failed to fetch rom." }, 500);
     }
 });
@@ -73,11 +73,13 @@ romsRouter.delete("/:id", async (c) => {
         });
 
         // Broadcast to clients so the UI updates
-        globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        if (typeof globalThis.dispatchEvent === "function") {
+            globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        }
 
         return c.json({ success: true, message: `ROM ${id} marked for deletion.` }, 202);
     } catch (e) {
-        console.error(`Failed to dispatch ROM deletion for ${id}:`, e);
+        console.error("Failed to dispatch ROM deletion for %s:", id, e);
         return c.json({ error: "Failed to dispatch ROM deletion." }, 500);
     }
 });

@@ -1,6 +1,6 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { eq } from "drizzle-orm";
-import { dirname } from "@std/path";
+import { dirname } from "node:path";
 import { db } from "../db/index.ts";
 import { games, scannedFiles, roms, romFiles, scannedSets, scannedSetFiles, systems, platforms, gamePlatforms } from "../db/schema.ts";
 import { generateId, slugify } from "../utils.ts";
@@ -25,7 +25,7 @@ importRouter.post("/", async (c) => {
         const existingSys = await db.select().from(systems).where(eq(systems.id, systemId)).get();
         let sysToInsert: { id: string; name: string; slug: string } | null = null;
         if (!existingSys) {
-            const apiKey = Deno.env.get("RAWG_API_KEY");
+            const apiKey = process.env.RAWG_API_KEY;
             if (!apiKey) throw new Error("RAWG_API_KEY not configured, cannot create system.");
             const pRes = await fetch(`https://api.rawg.io/api/platforms/${systemId}?key=${apiKey}`);
             if (!pRes.ok) throw new Error("Invalid systemId: could not fetch from RAWG.");

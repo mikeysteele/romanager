@@ -1,5 +1,25 @@
-import { walk } from "@std/fs";
-import { normalize as normalizePath, dirname, basename, relative } from "@std/path";
+import { normalize as normalizePath, dirname, basename, relative, join } from "node:path";
+import { readdir, stat } from "node:fs/promises";
+
+async function* walk(dir: string, options?: { includeDirs?: boolean; followSymlinks?: boolean }): AsyncGenerator<{ path: string; name: string; isDirectory: boolean }> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      const isDir = entry.isDirectory();
+      if (isDir) {
+        if (options?.includeDirs) {
+          yield { path: fullPath, name: entry.name, isDirectory: true };
+        }
+        yield* walk(fullPath, options);
+      } else {
+        yield { path: fullPath, name: entry.name, isDirectory: false };
+      }
+    }
+  } catch {
+    // Directory might be inaccessible or removed
+  }
+}
 import { db } from "./db/index.ts";
 import {
   roms,
@@ -96,8 +116,8 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
           let sz = fInfo ? fInfo.size : 0;
           if (!sz) {
             try {
-              const stat = await Deno.stat(pFile.resolvedPath);
-              sz = stat.size;
+              const fStat = await stat(pFile.resolvedPath);
+              sz = fStat.size;
             } catch {
               sz = 0;
             }
@@ -124,7 +144,7 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
         files: memberFiles,
       });
     } catch (e) {
-      console.warn(`[Scanner] Error parsing .m3u ${m3u.path}:`, e);
+      console.warn("[Scanner] Error parsing .m3u %s:", m3u.path, e);
     }
   }
 
@@ -164,8 +184,8 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
           let sz = fInfo ? fInfo.size : 0;
           if (!sz) {
             try {
-              const stat = await Deno.stat(pFile.resolvedPath);
-              sz = stat.size;
+              const fStat = await stat(pFile.resolvedPath);
+              sz = fStat.size;
             } catch {
               sz = 0;
             }
@@ -192,7 +212,7 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
         files: memberFiles,
       });
     } catch (e) {
-      console.warn(`[Scanner] Error parsing .gdi ${gdi.path}:`, e);
+      console.warn("[Scanner] Error parsing .gdi %s:", gdi.path, e);
     }
   }
 
@@ -232,8 +252,8 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
           let sz = fInfo ? fInfo.size : 0;
           if (!sz) {
             try {
-              const stat = await Deno.stat(pFile.resolvedPath);
-              sz = stat.size;
+              const fStat = await stat(pFile.resolvedPath);
+              sz = fStat.size;
             } catch {
               sz = 0;
             }
@@ -260,7 +280,7 @@ export async function groupDirectoryFiles(dir: string, files: DiscoveredFile[]):
         files: memberFiles,
       });
     } catch (e) {
-      console.warn(`[Scanner] Error parsing .cue ${cue.path}:`, e);
+      console.warn("[Scanner] Error parsing .cue %s:", cue.path, e);
     }
   }
 
@@ -300,7 +320,7 @@ export async function scanRomsWithSets(
   console.log(`[Scanner] Starting set-aware scan on ${rootDir}...`);
 
   try {
-    await Deno.stat(rootDir);
+    await stat(rootDir);
   } catch (_e) {
     console.error(`[Scanner] Directory ${rootDir} does not exist.`);
     return [];
@@ -343,19 +363,19 @@ export async function scanRomsWithSets(
         try {
           for await (const subEntry of walk(normPath, { includeDirs: false })) {
             const subNorm = normalizePath(subEntry.path);
-            const stat = await Deno.stat(subNorm);
-            totalSize += stat.size;
+            const sStat = await stat(subNorm);
+            totalSize += sStat.size;
             setFiles.push({
               relPath: relative(normPath, subNorm).replace(/\\/g, "/"),
               path: subNorm,
               filename: subEntry.name,
-              size: stat.size,
+              size: sStat.size,
               role: "aux",
               exists: true,
             });
           }
         } catch (e) {
-          console.error(`[Scanner] Error reading directory set ${normPath}:`, e);
+          console.error("[Scanner] Error reading directory set %s:", normPath, e);
         }
 
         if (setFiles.length > 0) {
@@ -384,8 +404,8 @@ export async function scanRomsWithSets(
 
     let size = 0;
     try {
-      const stat = await Deno.stat(normPath);
-      size = stat.size;
+      const fStat = await stat(normPath);
+      size = fStat.size;
     } catch {
       continue;
     }
@@ -436,7 +456,7 @@ export async function scanRomsWithSets(
           file.crc32 = hashes.crc32;
           file.mtime = hashes.mtime;
         } catch (e) {
-          console.warn(`[Scanner] Could not calculate hashes for ${file.path}:`, e);
+          console.warn("[Scanner] Could not calculate hashes for %s:", file.path, e);
         }
       }
     }

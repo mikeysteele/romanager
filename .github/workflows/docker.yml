@@ -8,7 +8,9 @@ on:
       - 'apps/**'
       - 'packages/**'
       - 'drizzle/**'
-      - 'deno.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/docker.yml'
   workflow_dispatch:
 

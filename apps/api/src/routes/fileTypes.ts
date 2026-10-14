@@ -1,4 +1,4 @@
-import { Hono } from "@hono/hono";
+import { Hono } from "hono";
 import { getFileTypeWhitelist, upsertFileTypeWhitelistEntry, deleteFileTypeWhitelistEntry } from "../db/queries.ts";
 
 export const fileTypesRouter = new Hono();

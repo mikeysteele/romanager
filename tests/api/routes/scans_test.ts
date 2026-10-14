@@ -1,9 +1,9 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
 import { createScansRouter } from "../../../apps/api/src/routes/scans.ts";
 
-Deno.test("GET / should return scans list", async () => {
+test("GET / should return scans list", async () => {
     // Mock worker
-    const worker = {} as Worker;
+    const worker = {} as any;
     const router = createScansRouter(worker, "/tmp");
     
     const req = new Request("http://localhost/");
@@ -13,13 +13,13 @@ Deno.test("GET / should return scans list", async () => {
     assertEquals(Array.isArray(json), true);
 });
 
-Deno.test("POST / should dispatch scan command to worker", async () => {
+test("POST / should dispatch scan command to worker", async () => {
     let postedMessage: {command?: string, path?: string, force?: boolean} = {} ;
     const mockWorker = {
         postMessage(msg: typeof postedMessage) {
             postedMessage = msg;
         }
-    } as unknown as Worker;
+    } as any;
 
     const router = createScansRouter(mockWorker, "/default/roms");
     

@@ -1,30 +1,32 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path, { join } from "node:path";
 import { scanRomsWithSets, groupDirectoryFiles } from "../../../apps/api/src/scanner-sets.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { scannedSets, scannedSetFiles, scannedFiles } from "../../../apps/api/src/db/schema.ts";
-import { join } from "@std/path";
 import { eq, like } from "drizzle-orm";
 
-Deno.test("scanner-sets: groupDirectoryFiles identifies single, cue, m3u, and gdi sets", async () => {
-  const tmpDir = await Deno.makeTempDir({ prefix: "romanager-grouping-test-" });
+test("scanner-sets: groupDirectoryFiles identifies single, cue, m3u, and gdi sets", async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "romanager-grouping-test-"));
   try {
     // 1. Single file
     const snesRom = join(tmpDir, "Zelda.sfc");
-    await Deno.writeTextFile(snesRom, "snes rom");
+    await fs.writeFile(snesRom, "snes rom", "utf-8");
 
     // 2. Cue + Bin
     const ps1Cue = join(tmpDir, "Crash.cue");
     const ps1Bin = join(tmpDir, "crash.bin");
-    await Deno.writeTextFile(ps1Cue, `FILE "crash.bin" BINARY\n  TRACK 01 MODE2/2352\n`);
-    await Deno.writeTextFile(ps1Bin, "crash bin content");
+    await fs.writeFile(ps1Cue, `FILE "crash.bin" BINARY\n  TRACK 01 MODE2/2352\n`, "utf-8");
+    await fs.writeFile(ps1Bin, "crash bin content", "utf-8");
 
     // 3. M3U set
     const m3uPath = join(tmpDir, "MetalGear.m3u");
     const disc1 = join(tmpDir, "mg_disc1.chd");
     const disc2 = join(tmpDir, "mg_disc2.chd");
-    await Deno.writeTextFile(disc1, "disc 1 chd");
-    await Deno.writeTextFile(disc2, "disc 2 chd");
-    await Deno.writeTextFile(m3uPath, "mg_disc1.chd\nmg_disc2.chd\n");
+    await fs.writeFile(disc1, "disc 1 chd", "utf-8");
+    await fs.writeFile(disc2, "disc 2 chd", "utf-8");
+    await fs.writeFile(m3uPath, "mg_disc1.chd\nmg_disc2.chd\n", "utf-8");
 
     const files = [
       { path: snesRom, filename: "Zelda.sfc", dir: tmpDir, size: 8 },
@@ -54,17 +56,17 @@ Deno.test("scanner-sets: groupDirectoryFiles identifies single, cue, m3u, and gd
     assertEquals(Boolean(singleSet), true);
     assertEquals(singleSet?.files.length, 1);
   } finally {
-    await Deno.remove(tmpDir, { recursive: true });
+    await fs.rm(tmpDir, { recursive: true, force: true });
   }
 });
 
-Deno.test("scanner-sets: scanRomsWithSets discovers and stages directory sets (.ps3)", async () => {
-  const tmpDir = await Deno.makeTempDir({ prefix: "romanager-dir-set-test-" });
+test("scanner-sets: scanRomsWithSets discovers and stages directory sets (.ps3)", async () => {
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "romanager-dir-set-test-"));
   try {
     const dirSet = join(tmpDir, "DemonSouls.ps3");
-    await Deno.mkdir(dirSet, { recursive: true });
-    await Deno.writeTextFile(join(dirSet, "PARAM.SFO"), "sfo content");
-    await Deno.writeTextFile(join(dirSet, "EBOOT.BIN"), "eboot content");
+    await fs.mkdir(dirSet, { recursive: true });
+    await fs.writeFile(join(dirSet, "PARAM.SFO"), "sfo content", "utf-8");
+    await fs.writeFile(join(dirSet, "EBOOT.BIN"), "eboot content", "utf-8");
 
     const staged = await scanRomsWithSets(tmpDir);
 
@@ -85,6 +87,6 @@ Deno.test("scanner-sets: scanRomsWithSets discovers and stages directory sets (.
       await db.delete(scannedFiles).where(like(scannedFiles.path, `%${tmpDir}%`));
     }
   } finally {
-    await Deno.remove(tmpDir, { recursive: true });
+    await fs.rm(tmpDir, { recursive: true, force: true });
   }
 });

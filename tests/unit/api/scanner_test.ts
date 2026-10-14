@@ -1,8 +1,9 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
+import fs from "node:fs/promises";
+import { join } from "node:path";
 import { scanRoms, verifyFileAgainstWhitelist } from "../../../apps/api/src/scanner.ts";
 import { db } from "../../../apps/api/src/db/index.ts";
 import { scannedFiles, scannedSets } from "../../../apps/api/src/db/schema.ts";
-import { join } from "@std/path";
 import { eq, like, and } from "drizzle-orm";
 
 const FIXTURE_DIR = "./tests/fixtures/roms_whitelist_test";
@@ -10,35 +11,35 @@ const FIXTURE_DIR = "./tests/fixtures/roms_whitelist_test";
 async function setupFixture() {
   await db.delete(scannedFiles).where(like(scannedFiles.path, "%roms_whitelist_test%"));
   await db.delete(scannedSets).where(like(scannedSets.basePath, "%roms_whitelist_test%"));
-  await Deno.mkdir(FIXTURE_DIR, { recursive: true });
+  await fs.mkdir(FIXTURE_DIR, { recursive: true });
   
   // 1. Whitelisted extension without magic number
-  await Deno.writeTextFile(join(FIXTURE_DIR, "game.sfc"), "sfc content");
+  await fs.writeFile(join(FIXTURE_DIR, "game.sfc"), "sfc content", "utf-8");
 
   // 2. Whitelisted extension with matching magic number (NES header: 4E 45 53 1A)
   const validNes = new Uint8Array([0x4E, 0x45, 0x53, 0x1A, 0x01, 0x02, 0x00]);
-  await Deno.writeFile(join(FIXTURE_DIR, "valid.nes"), validNes);
+  await fs.writeFile(join(FIXTURE_DIR, "valid.nes"), validNes);
 
   // 3. Whitelisted extension with invalid magic number
   const invalidNes = new Uint8Array([0x00, 0x11, 0x22, 0x33, 0x01, 0x02, 0x00]);
-  await Deno.writeFile(join(FIXTURE_DIR, "invalid.nes"), invalidNes);
+  await fs.writeFile(join(FIXTURE_DIR, "invalid.nes"), invalidNes);
 
   // 4. Non-whitelisted file
-  await Deno.writeTextFile(join(FIXTURE_DIR, "readme.txt"), "readme text");
-  await Deno.writeTextFile(join(FIXTURE_DIR, "info.nfo"), "nfo text");
+  await fs.writeFile(join(FIXTURE_DIR, "readme.txt"), "readme text", "utf-8");
+  await fs.writeFile(join(FIXTURE_DIR, "info.nfo"), "nfo text", "utf-8");
 }
 
 async function teardownFixture() {
   await db.delete(scannedFiles).where(like(scannedFiles.path, "%roms_whitelist_test%"));
   await db.delete(scannedSets).where(like(scannedSets.basePath, "%roms_whitelist_test%"));
   try {
-    await Deno.remove(FIXTURE_DIR, { recursive: true });
+    await fs.rm(FIXTURE_DIR, { recursive: true, force: true });
   } catch {
     // Ignore teardown error if fixture directory was already removed
   }
 }
 
-Deno.test("verifyFileAgainstWhitelist: extension and magic number logic", async () => {
+test("verifyFileAgainstWhitelist: extension and magic number logic", async () => {
   await setupFixture();
   try {
     const whitelist = [
@@ -66,7 +67,7 @@ Deno.test("verifyFileAgainstWhitelist: extension and magic number logic", async 
   }
 });
 
-Deno.test("scanRoms stages only whitelisted files into scanned_files", async () => {
+test("scanRoms stages only whitelisted files into scanned_files", async () => {
   await setupFixture();
   try {
     await scanRoms(FIXTURE_DIR);

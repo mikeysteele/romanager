@@ -1,21 +1,27 @@
-import { defineConfig } from 'npm:vite@^5.0.0';
-import deno from 'npm:@deno/vite-plugin@^1.0.0';
+import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig({
   root: 'src',
-  plugins: [
-    deno(),
-  ],
+  envDir: resolve(__dirname, '../..'),
+  plugins: [],
   resolve: {
-    
+    alias: {
+      '@repo/shared': resolve(__dirname, '../../packages/shared/mod.ts'),
+      '@repo/ui-components': resolve(__dirname, '../../packages/ui-components/mod.ts'),
+    },
   },
   esbuild: {
     tsconfigRaw: {
       compilerOptions: {
         experimentalDecorators: true,
         useDefineForClassFields: false,
-      }
-    }
+      },
+    },
   },
   build: {
     outDir: '../dist',
@@ -26,7 +32,6 @@ export default defineConfig({
       allow: ['../..'],
     },
     proxy: {
-     
       '/api/events': {
         target: 'http://localhost:8000',
         changeOrigin: true,
@@ -39,12 +44,12 @@ export default defineConfig({
               }
             });
           });
-        }
+        },
       },
-       '/api': {
+      '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
-    }
-  }
+    },
+  },
 });

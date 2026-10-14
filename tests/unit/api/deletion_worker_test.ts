@@ -1,23 +1,27 @@
-import { assertEquals } from "@std/assert";
+import { assertEquals } from "@repo/tests/utils/assert";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { UniversalWorker } from "../../../apps/api/src/worker-adapter.ts";
 
-Deno.test("deletion.worker: deletes temp file and blocks protected paths", async () => {
-    const worker = new Worker(
+test("deletion.worker: deletes temp file and blocks protected paths", async () => {
+    const worker = new UniversalWorker(
         new URL("../../../apps/api/src/workers/deletion.worker.ts", import.meta.url).href,
         { type: "module" }
     );
 
     try {
         // 1. Create a safe temporary file to delete
-        const tempFile = await Deno.makeTempFile();
-        await Deno.writeTextFile(tempFile, "sample data to delete");
+        const tempFile = path.join(os.tmpdir(), `temp-del-${Date.now()}-${Math.random().toString(36).substring(2)}.tmp`);
+        await fs.writeFile(tempFile, "sample data to delete", "utf-8");
 
         // Verify file exists
-        const statBefore = await Deno.stat(tempFile);
-        assertEquals(statBefore.isFile, true);
+        const statBefore = await fs.stat(tempFile);
+        assertEquals(statBefore.isFile(), true);
 
         // 2. Dispatch deletion with temp file and protected path
         const messagePromise = new Promise<{ type: string; id: string }>((resolve) => {
-            worker.onmessage = (e) => {
+            worker.onmessage = (e: any) => {
                 resolve(e.data);
             };
         });
@@ -34,9 +38,9 @@ Deno.test("deletion.worker: deletes temp file and blocks protected paths", async
         // 3. Verify temp file was removed
         let exists = true;
         try {
-            await Deno.stat(tempFile);
-        } catch (e) {
-            if (e instanceof Deno.errors.NotFound) {
+            await fs.stat(tempFile);
+        } catch (e: any) {
+            if (e.code === "ENOENT") {
                 exists = false;
             }
         }

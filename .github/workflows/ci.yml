@@ -18,20 +18,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          deno-version: v2.x
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run Linter
-        run: deno lint
+        run: pnpm run lint
 
       - name: Verify Types across Workspace
-        run: |
-          deno check apps/api/main.ts
-          deno check apps/cli/src/main.ts
-          deno check scripts/verify-migrations.ts
-          deno check tests/steps/devices.ts tests/steps/platforms.ts tests/steps/game_detail.ts tests/steps/navigation.ts tests/steps/settings.ts tests/steps/importing.ts
+        run: pnpm run typecheck
 
   test-migrations:
     name: Verify Migrations Replay
@@ -42,20 +45,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Replay and Verify Migrations
         env:
           BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || 'origin/main' }}
-        run: deno task test:migrations
+        run: pnpm run test:migrations
 
   test-unit-and-api:
     name: Unit & API Contract Tests
@@ -64,24 +69,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - name: Setup Node.js (for Drizzle Kit test database)
+      - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build UI Bundle
-        run: deno task build:ui
+        run: pnpm run build:ui
 
-      - name: Run API Contract Tests
-        run: deno task test:api
-
-      - name: Run UI Unit Tests
-        run: deno task test:unit
+      - name: Run Tests
+        run: pnpm test
 
   test-bdd-e2e:
     name: Playwright BDD E2E Tests
@@ -90,24 +94,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build UI Bundle
-        run: deno task build:ui
+        run: pnpm run build:ui
 
       - name: Install Playwright Browsers & System Dependencies
         run: npx playwright install --with-deps chrome
 
       - name: Run BDD E2E Tests
-        run: deno task test:bdd
+        run: pnpm run test:e2e
 
       - name: Upload Playwright Artifacts on Failure
         if: failure()
@@ -126,12 +132,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      - name: Compile Linux x86_64 & aarch64
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI Binary
+        run: pnpm run build:cli
+
+      - name: Verify CLI Binary
         run: |
-          deno task compile:cli
-          deno task compile:cli:arm
+          ./apps/cli/dist/romanager-sync --help
+          ./apps/cli/dist/romanager-sync --version

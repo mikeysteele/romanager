@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { dirname } from "@std/path";
-import { ensureDir } from "@std/fs";
+import { createReadStream } from "node:fs";
+import { dirname } from "node:path";
+import { mkdir, open, stat, rm, rename } from "node:fs/promises";
 import type { Manifest } from "@repo/shared";
 import type { CliConfig } from "./config.ts";
 import { AuthError, ServerUnreachableError } from "./errors.ts";
@@ -62,52 +63,47 @@ export class ApiClient {
     return (await res.json()) as DeviceMeResponse;
   }
 
-  async getManifest(
-    cachedEtag?: string
-  ): Promise<{ notModified: boolean; manifest?: Manifest; etag?: string }> {
+  async getManifest(ifNoneMatch?: string): Promise<{ notModified: boolean; manifest: Manifest | null }> {
     const headers: Record<string, string> = {};
-    if (cachedEtag) {
-      headers["If-None-Match"] = cachedEtag;
+    if (ifNoneMatch) {
+      headers["If-None-Match"] = `"${ifNoneMatch}"`;
     }
-
     const res = await this.request("/api/devices/me/manifest", { headers });
-
     if (res.status === 304) {
-      return { notModified: true };
+      return { notModified: true, manifest: null };
     }
-
     if (!res.ok) {
-      throw new Error(`Failed to fetch manifest: ${res.status} ${res.statusText}`);
+      throw new Error(`Failed to fetch manifest: ${res.statusText}`);
     }
-
-    const etag = res.headers.get("etag") || undefined;
     const manifest = (await res.json()) as Manifest;
-    return { notModified: false, manifest, etag };
+    return { notModified: false, manifest };
   }
 
   async postReport(report: {
     agentVersion: string;
     freeDiskBytes?: number;
-    lastSyncSummary?: Record<string, unknown>;
+    lastSyncSummary: {
+      installed: number;
+      updated: number;
+      removed: number;
+      failed: number;
+      conflicts: number;
+    };
   }): Promise<void> {
-    try {
-      await this.request("/api/devices/me/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(report),
-      });
-    } catch {
-      // Non-fatal if heartbeat fails
-    }
+    await this.request("/api/devices/me/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(report),
+    });
   }
 
   async downloadFile(
     fileId: string,
     destPath: string,
-    expectedSha1: string,
+    expectedSha1?: string | null,
     onProgress?: (bytes: number) => void
   ): Promise<void> {
-    await ensureDir(dirname(destPath));
+    await mkdir(dirname(destPath), { recursive: true });
     const partPath = `${destPath}.part`;
 
     let attempts = 0;
@@ -121,18 +117,16 @@ export class ApiClient {
 
         // Check if partial file exists
         try {
-          const stat = await Deno.stat(partPath);
-          if (stat.size > 0) {
-            startByte = stat.size;
+          const s = await stat(partPath);
+          if (s.size > 0) {
+            startByte = s.size;
             // Pre-hash existing partial content
-            const existingFile = await Deno.open(partPath, { read: true });
-            const buf = new Uint8Array(64 * 1024);
-            while (true) {
-              const n = await existingFile.read(buf);
-              if (n === null || n === 0) break;
-              hasher.update(buf.subarray(0, n));
-            }
-            existingFile.close();
+            await new Promise<void>((resolveHash, rejectHash) => {
+              const stream = createReadStream(partPath);
+              stream.on("data", (chunk) => hasher.update(chunk));
+              stream.on("end", () => resolveHash());
+              stream.on("error", rejectHash);
+            });
           }
         } catch {
           startByte = 0;
@@ -148,7 +142,7 @@ export class ApiClient {
         if (res.status === 416) {
           // Range out of bounds or corrupted partial, restart from 0
           try {
-            await Deno.remove(partPath);
+            await rm(partPath, { force: true });
           } catch {
             // ignore
           }
@@ -161,12 +155,7 @@ export class ApiClient {
 
         // If server returned 200 instead of 206, start from scratch
         const appendMode = res.status === 206 && startByte > 0;
-        const file = await Deno.open(partPath, {
-          write: true,
-          create: true,
-          append: appendMode,
-          truncate: !appendMode,
-        });
+        const fileHandle = await open(partPath, appendMode ? "a" : "w");
 
         if (!appendMode) {
           // Re-initialize hasher if not appending
@@ -175,7 +164,7 @@ export class ApiClient {
 
         const reader = res.body?.getReader();
         if (!reader) {
-          file.close();
+          await fileHandle.close();
           throw new Error("Empty response body");
         }
 
@@ -184,7 +173,7 @@ export class ApiClient {
             const { done, value } = await reader.read();
             if (done) break;
             if (value) {
-              await file.write(value);
+              await fileHandle.write(value);
               hasher.update(value);
               if (onProgress) {
                 onProgress(value.length);
@@ -192,7 +181,7 @@ export class ApiClient {
             }
           }
         } finally {
-          file.close();
+          await fileHandle.close();
         }
 
         // Verify SHA-1
@@ -204,12 +193,12 @@ export class ApiClient {
         }
 
         // Atomic move into final position
-        await Deno.rename(partPath, destPath);
+        await rename(partPath, destPath);
         return; // Success!
       } catch (e) {
         if (e instanceof AuthError) throw e;
         try {
-          await Deno.remove(partPath);
+          await rm(partPath, { force: true });
         } catch {
           // ignore
         }

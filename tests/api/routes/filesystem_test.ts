@@ -1,7 +1,8 @@
-import { assertEquals } from "jsr:@std/assert@^0.217.0";
+import { assertEquals } from "@repo/tests/utils/assert";
+import process from "node:process";
 import { filesystemRouter } from "../../../apps/api/src/routes/filesystem.ts";
 
-Deno.test("GET /api/filesystem/browse should return directories and shortcuts", async () => {
+test("GET /api/filesystem/browse should return directories and shortcuts", async () => {
     const req = new Request("http://localhost/browse");
     const res = await filesystemRouter.request(req);
     assertEquals(res.status, 200);
@@ -12,8 +13,8 @@ Deno.test("GET /api/filesystem/browse should return directories and shortcuts", 
     assertEquals(json.shortcuts.length > 0, true);
 });
 
-Deno.test("GET /api/filesystem/browse with path parameter should browse specific directory", async () => {
-    const cwd = Deno.cwd();
+test("GET /api/filesystem/browse with path parameter should browse specific directory", async () => {
+    const cwd = process.cwd();
     const req = new Request(`http://localhost/browse?path=${encodeURIComponent(cwd)}`);
     const res = await filesystemRouter.request(req);
     assertEquals(res.status, 200);
@@ -25,7 +26,7 @@ Deno.test("GET /api/filesystem/browse with path parameter should browse specific
     assertEquals(dirNames.includes("packages"), true);
 });
 
-Deno.test("GET /api/filesystem/browse handles non-existent path gracefully", async () => {
+test("GET /api/filesystem/browse handles non-existent path gracefully", async () => {
     const fakePath = "/path/that/definitely/does/not/exist/99999";
     const req = new Request(`http://localhost/browse?path=${encodeURIComponent(fakePath)}`);
     const res = await filesystemRouter.request(req);

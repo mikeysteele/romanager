@@ -1,12 +1,16 @@
-import { dirname, resolve } from "@std/path";
-import { ensureDir } from "@std/fs";
+import { dirname, resolve } from "node:path";
+import { mkdir, link, copyFile, rename, rm, stat } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import type { Manifest } from "@repo/shared";
 import type { CliConfig } from "./config.ts";
 import { saveState, type CliState, type StateSetRecord } from "./state.ts";
-import { type SyncPlan, type PlanItem, getFreeDiskBytes } from "./planner.ts";
+import { type SyncPlan, getFreeDiskBytes } from "./planner.ts";
 import type { ApiClient } from "./api-client.ts";
 import { calculateFileSha1 } from "./hasher.ts";
 import { InsufficientDiskSpaceError, PartialSyncError } from "./errors.ts";
+
+const execFileAsync = promisify(execFile);
 
 export interface SyncResult {
   installedCount: number;
@@ -58,45 +62,35 @@ export async function executeSyncPlan(
   // 1. Removals first (Section 8.1)
   for (const item of plan.toRemove) {
     try {
-      log(`Removing set: ${item.record.launchPath}`);
+      log(`Removing set: ${item.key}`);
       const rootDir = item.record.kind === "firmware" ? config.paths.bios : config.paths.roms;
-
-      // Launch file removed first!
-      const launchFullPath = resolve(rootDir, item.record.launchPath);
-      await removeFileOrTrash(launchFullPath, item.key, config);
-
-      // Remove remaining member files
       for (const relPath of Object.keys(item.record.files)) {
-        if (relPath !== item.record.launchPath) {
-          const fullPath = resolve(rootDir, relPath);
-          await removeFileOrTrash(fullPath, item.key, config);
-        }
+        const fullPath = resolve(rootDir, relPath);
+        await removeFileOrTrash(fullPath, item.key, config);
       }
-
       delete state.sets[item.key];
       await saveState(state, statePath);
       result.removedCount++;
     } catch (e) {
       result.failedCount++;
-      result.errors.push(`Failed to remove ${item.record.launchPath}: ${e}`);
+      result.errors.push(`Failed to remove ${item.key}: ${e}`);
     }
   }
 
-  // 2. Installs and Updates (smallest sets first)
-  const allIncoming: PlanItem[] = [...plan.toInstall, ...plan.toUpdate].sort(
-    (a, b) => a.bytesToDownload - b.bytesToDownload
-  );
+  // 2. Installs and Updates (Atomic Staging Protocol)
+  const itemsToProcess = [...plan.toInstall, ...plan.toUpdate];
 
-  for (const item of allIncoming) {
-    const isUpdate = item.action === "update";
+  for (const item of itemsToProcess) {
     const set = item.set;
+    const isUpdate = item.action === "update";
     const key = `${set.kind}:${set.id}`;
     const rootDir = set.kind === "firmware" ? config.paths.bios : config.paths.roms;
-    const stagingDir = resolve(rootDir, ".romanager-staging", set.id);
+    const stagingDir = resolve(rootDir, ".romanager-staging", `${set.kind}-${set.id}`);
+
+    log(`${isUpdate ? "Updating" : "Installing"} set: ${set.name} (${set.id})`);
 
     try {
-      log(`${isUpdate ? "Updating" : "Installing"} set: ${set.name} (${set.launchPath})`);
-      await ensureDir(stagingDir);
+      await mkdir(stagingDir, { recursive: true });
 
       // If updating, hardlink or copy existing unchanged member files into staging
       if (isUpdate && state.sets[key]) {
@@ -105,11 +99,11 @@ export async function executeSyncPlan(
           if (!needsDownload) {
             const currentInstalledPath = resolve(rootDir, f.path);
             const stagedTarget = resolve(stagingDir, f.path);
-            await ensureDir(dirname(stagedTarget));
+            await mkdir(dirname(stagedTarget), { recursive: true });
             try {
-              await Deno.link(currentInstalledPath, stagedTarget);
+              await link(currentInstalledPath, stagedTarget);
             } catch {
-              await Deno.copyFile(currentInstalledPath, stagedTarget);
+              await copyFile(currentInstalledPath, stagedTarget);
             }
           }
         }
@@ -138,13 +132,13 @@ export async function executeSyncPlan(
       if (set.setType === "directory") {
         const targetDir = resolve(rootDir, dirname(set.launchPath));
         // Move staged dir into target dir
-        await ensureDir(dirname(targetDir));
+        await mkdir(dirname(targetDir), { recursive: true });
         try {
-          await Deno.rename(stagingDir, targetDir);
+          await rename(stagingDir, targetDir);
         } catch {
           // Fallback if renaming across boundaries
-          await Deno.copyFile(stagingDir, targetDir);
-          await Deno.remove(stagingDir, { recursive: true });
+          await copyFile(stagingDir, targetDir);
+          await rm(stagingDir, { recursive: true, force: true });
         }
       } else {
         // Non-launch files first!
@@ -154,20 +148,20 @@ export async function executeSyncPlan(
         for (const f of nonLaunchFiles) {
           const stagedPath = resolve(stagingDir, f.path);
           const destPath = resolve(rootDir, f.path);
-          await ensureDir(dirname(destPath));
-          await Deno.rename(stagedPath, destPath);
+          await mkdir(dirname(destPath), { recursive: true });
+          await rename(stagedPath, destPath);
         }
 
         // Launch file LAST!
         const stagedLaunch = resolve(stagingDir, launchFileObj.path);
         const destLaunch = resolve(rootDir, launchFileObj.path);
-        await ensureDir(dirname(destLaunch));
-        await Deno.rename(stagedLaunch, destLaunch);
+        await mkdir(dirname(destLaunch), { recursive: true });
+        await rename(stagedLaunch, destLaunch);
       }
 
       // Clean staging dir
       try {
-        await Deno.remove(stagingDir, { recursive: true });
+        await rm(stagingDir, { recursive: true, force: true });
       } catch {
         // ignore
       }
@@ -178,8 +172,8 @@ export async function executeSyncPlan(
         const fullPath = resolve(rootDir, f.path);
         let mtime = Date.now();
         try {
-          const stat = await Deno.stat(fullPath);
-          if (stat.mtime) mtime = stat.mtime.getTime();
+          const s = await stat(fullPath);
+          if (s.mtime) mtime = s.mtime.getTime();
         } catch {
           // fallback
         }
@@ -211,7 +205,7 @@ export async function executeSyncPlan(
       result.errors.push(`Failed set ${set.name}: ${e}`);
       // Clean up staging on failure
       try {
-        await Deno.remove(stagingDir, { recursive: true });
+        await rm(stagingDir, { recursive: true, force: true });
       } catch {
         // ignore
       }
@@ -227,12 +221,7 @@ export async function executeSyncPlan(
   if (changed && config.hooks.postSync) {
     try {
       log(`Running postSync hook: ${config.hooks.postSync}`);
-      const cmd = new Deno.Command("sh", {
-        args: ["-c", config.hooks.postSync],
-        stdout: "null",
-        stderr: "null",
-      });
-      await cmd.output();
+      await execFileAsync("sh", ["-c", config.hooks.postSync]);
     } catch (e) {
       log(`Warning: postSync hook failed: ${e}`);
     }
@@ -272,14 +261,14 @@ async function removeFileOrTrash(filePath: string, setId: string, config: CliCon
     if (config.sync.deleteMode === "trash") {
       const today = new Date().toISOString().slice(0, 10);
       const trashDir = resolve(config.paths.roms, ".romanager-trash", today, setId);
-      await ensureDir(trashDir);
+      await mkdir(trashDir, { recursive: true });
       const target = resolve(trashDir, filePath.split("/").pop() || "file");
-      await Deno.rename(filePath, target);
+      await rename(filePath, target);
       return;
     }
 
     // Default: "delete"
-    await Deno.remove(filePath);
+    await rm(filePath, { force: true });
   } catch {
     // file might already be gone
   }

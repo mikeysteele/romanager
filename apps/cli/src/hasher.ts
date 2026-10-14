@@ -1,19 +1,12 @@
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 
 export async function calculateFileSha1(filePath: string): Promise<string> {
-  const file = await Deno.open(filePath, { read: true });
-  const hasher = createHash("sha1");
-  const buffer = new Uint8Array(64 * 1024);
-
-  try {
-    while (true) {
-      const bytesRead = await file.read(buffer);
-      if (bytesRead === null || bytesRead === 0) break;
-      hasher.update(buffer.subarray(0, bytesRead));
-    }
-  } finally {
-    file.close();
-  }
-
-  return hasher.digest("hex");
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha1");
+    const stream = createReadStream(filePath);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", reject);
+  });
 }
