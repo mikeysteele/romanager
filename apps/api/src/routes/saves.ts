@@ -8,6 +8,7 @@ import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import { dirname, resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { assertWithinRoots, sanitizeRelativePath } from "../path-policy.ts";
 
 export const savesRouter = new Hono<{ Variables: AuthVariables }>();
 
@@ -60,12 +61,20 @@ savesRouter.put("/*", async (c) => {
   if (!device) return c.json({ error: "Unauthorized" }, 401);
 
   const rawPath = decodeURIComponent(c.req.path);
-  const relativePath = rawPath
+  const unstripped = rawPath
     .replace(/^(\/api)?\/devices\/me\/saves\/?/, "")
     .replace(/^\/me\/saves\/?/, "")
     .replace(/^\/+/, "");
-  if (!relativePath) {
+  if (!unstripped) {
     return c.json({ error: "Save file relativePath is required" }, 400);
+  }
+
+  // Security check (S-3): Reject directory traversal (..) and absolute paths
+  let relativePath: string;
+  try {
+    relativePath = sanitizeRelativePath(unstripped);
+  } catch (_err) {
+    return c.json({ error: "Invalid save file path: directory traversal is forbidden" }, 400);
   }
 
   const clientSha1 = c.req.header("x-sha1");
@@ -99,9 +108,12 @@ savesRouter.put("/*", async (c) => {
     return c.json({ status: "unchanged", sha1: actualSha1 });
   }
 
-  // Save to disk
+  // Security check (S-3): Store content-addressed blob under baseSavesDir
   const baseSavesDir = await getSaveStorageDir();
-  const storedPath = resolve(baseSavesDir, device.id, relativePath, `${actualSha1}.bin`);
+  const prefix = actualSha1.slice(0, 2);
+  const storedPath = resolve(baseSavesDir, "blobs", prefix, `${actualSha1}.bin`);
+  assertWithinRoots(baseSavesDir, storedPath, "Save storage path");
+
   await mkdir(dirname(storedPath), { recursive: true });
   await writeFile(storedPath, bytes);
 
@@ -165,12 +177,20 @@ savesRouter.get("/*", async (c) => {
   if (!device) return c.json({ error: "Unauthorized" }, 401);
 
   const rawPath = decodeURIComponent(c.req.path);
-  const relativePath = rawPath
+  const unstripped = rawPath
     .replace(/^(\/api)?\/devices\/me\/saves\/?/, "")
     .replace(/^\/me\/saves\/?/, "")
     .replace(/^\/+/, "");
-  if (!relativePath) {
+  if (!unstripped) {
     return c.json({ error: "Save file relativePath is required" }, 400);
+  }
+
+  // Security check (S-3): Reject directory traversal
+  let relativePath: string;
+  try {
+    relativePath = sanitizeRelativePath(unstripped);
+  } catch (_err) {
+    return c.json({ error: "Invalid save file path: directory traversal is forbidden" }, 400);
   }
 
   const saveFile = await db
@@ -203,6 +223,14 @@ savesRouter.get("/*", async (c) => {
 
   if (!version) {
     return c.json({ error: "Save version not found" }, 404);
+  }
+
+  // Security check (S-3): Verify storedPath is within baseSavesDir before streaming
+  const baseSavesDir = await getSaveStorageDir();
+  try {
+    assertWithinRoots(baseSavesDir, version.storedPath, "Stored save file");
+  } catch {
+    return c.json({ error: "Forbidden: stored save file path outside allowed roots" }, 403);
   }
 
   try {

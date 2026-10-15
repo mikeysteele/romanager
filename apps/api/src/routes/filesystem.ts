@@ -1,16 +1,21 @@
 import { Hono } from "hono";
 import { normalize, dirname, join } from "node:path";
 import { stat, readdir } from "node:fs/promises";
+import { getAllowedBrowseRoots, isWithinRoots } from "../path-policy.ts";
 
 export const filesystemRouter = new Hono();
 
 filesystemRouter.get("/browse", async (c) => {
+    const shortcuts = await getAllowedBrowseRoots();
+    const allowedPaths = shortcuts.map((s) => s.path);
+    const defaultRoot = allowedPaths[0] || process.cwd();
+
     const rawPath = c.req.query("path");
     let targetPath = rawPath ? normalize(rawPath.trim()) : "";
 
-    // Default to CWD or root if not provided
+    // Default to primary allowed root if not provided
     if (!targetPath) {
-        targetPath = process.cwd();
+        targetPath = defaultRoot;
     }
 
     // Verify path exists and is a directory
@@ -20,19 +25,25 @@ filesystemRouter.get("/browse", async (c) => {
             targetPath = dirname(targetPath);
         }
     } catch (_err) {
-        // Fallback to parent or root
+        // Fallback to parent or default root
         try {
             const parent = dirname(targetPath);
             await stat(parent);
             targetPath = parent;
         } catch (_parentErr) {
-            targetPath = "/";
+            targetPath = defaultRoot;
         }
     }
 
-    const SENSITIVE_PATHS = ["/proc", "/sys", "/dev", "/etc/shadow", "/root/.ssh"];
-    if (SENSITIVE_PATHS.some(p => targetPath === p || targetPath.startsWith(p + "/"))) {
-        targetPath = process.cwd();
+    // Strict boundary enforcement: ensure targetPath is within allowed roots
+    if (!isWithinRoots(allowedPaths, targetPath)) {
+        targetPath = defaultRoot;
+    }
+
+    // Explicit defense-in-depth against sensitive host namespaces
+    const SENSITIVE_PATHS = ["/proc", "/sys", "/dev", "/etc", "/root"];
+    if (SENSITIVE_PATHS.some((p) => targetPath === p || targetPath.startsWith(p + "/"))) {
+        targetPath = defaultRoot;
     }
 
     const directories: Array<{ name: string; path: string }> = [];
@@ -43,22 +54,24 @@ filesystemRouter.get("/browse", async (c) => {
             // Ignore hidden/dot folders like .git, .ssh
             if (entry.name.startsWith(".")) continue;
 
+            const fullPath = normalize(join(targetPath, entry.name));
+
             if (entry.isDirectory()) {
                 directories.push({
                     name: entry.name,
-                    path: normalize(join(targetPath, entry.name)),
+                    path: fullPath,
                 });
             } else if (entry.isSymbolicLink()) {
                 try {
-                    const fullPath = join(targetPath, entry.name);
                     const linkStat = await stat(fullPath);
-                    if (linkStat.isDirectory()) {
+                    // Ensure symlink target does not escape allowed roots
+                    if (linkStat.isDirectory() && isWithinRoots(allowedPaths, fullPath)) {
                         directories.push({
                             name: entry.name,
-                            path: normalize(fullPath),
+                            path: fullPath,
                         });
                     }
-                } catch (_linkErr) {
+                } catch {
                     // Broken symlink or permission issue, skip
                 }
             }
@@ -70,39 +83,12 @@ filesystemRouter.get("/browse", async (c) => {
     // Sort case-insensitively and numerically
     directories.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }));
 
-    // Calculate parent path
-    const isRoot = targetPath === "/" || targetPath === "\\";
-    const parentPath = isRoot ? null : normalize(dirname(targetPath));
-
-    // Gather available shortcuts
-    const shortcuts: Array<{ label: string; path: string }> = [];
-    shortcuts.push({ label: "Root (/)", path: "/" });
-
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    if (homeDir) {
-        try {
-            await stat(homeDir);
-            shortcuts.push({ label: "Home (~)", path: normalize(homeDir) });
-        } catch (_homeErr) {
-            // Home directory inaccessible
-        }
-    }
-
-    try {
-        await stat("/mnt");
-        shortcuts.push({ label: "/mnt", path: "/mnt" });
-    } catch (_mntErr) {
-        // /mnt not present
-    }
-
-    try {
-        await stat("/media");
-        shortcuts.push({ label: "/media", path: "/media" });
-    } catch (_mediaErr) {
-        // /media not present
-    }
-
-    shortcuts.push({ label: "Project", path: normalize(process.cwd()) });
+    // Calculate parent path (only if parent stays within allowed roots)
+    const parentCandidate = normalize(dirname(targetPath));
+    const parentPath =
+        parentCandidate !== targetPath && isWithinRoots(allowedPaths, parentCandidate)
+            ? parentCandidate
+            : null;
 
     return c.json({
         currentPath: targetPath,

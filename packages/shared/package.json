@@ -5,7 +5,8 @@
   "exports": {
     ".": "./mod.ts",
     "./types": "./types.ts",
-    "./utils": "./utils.ts"
+    "./utils": "./utils.ts",
+    "./path-policy": "./path-policy.ts"
   },
   "dependencies": {
     "zod": "^3.22.4"
