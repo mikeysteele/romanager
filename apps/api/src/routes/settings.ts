@@ -18,7 +18,6 @@ export const createSettingsRouter = (worker: IWorker) => {
         
         // Trigger scan if roms_dir changes
         if (key === 'roms_dir') {
-            console.log('scanning') 
             worker.postMessage({ command: 'scan', path: value });
         }
         

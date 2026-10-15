@@ -8,7 +8,25 @@ export const createScansRouter = (worker: IWorker, romsDir: string) => {
     const scansRouter = new Hono();
 
     scansRouter.get("/", async (c) => {
-        const scans = await db.select().from(scannedFiles);
+        const limitParam = c.req.query("limit");
+        const offsetParam = c.req.query("offset");
+        let query = db.select().from(scannedFiles).orderBy(scannedFiles.filename, scannedFiles.id);
+
+        if (limitParam) {
+            const parsedLimit = parseInt(limitParam, 10);
+            if (!isNaN(parsedLimit) && parsedLimit > 0) {
+                const limit = Math.min(parsedLimit, 500);
+                query = query.limit(limit) as typeof query;
+                if (offsetParam) {
+                    const parsedOffset = parseInt(offsetParam, 10);
+                    if (!isNaN(parsedOffset) && parsedOffset > 0) {
+                        query = query.offset(parsedOffset) as typeof query;
+                    }
+                }
+            }
+        }
+
+        const scans = await query;
         return c.json(scans);
     });
 

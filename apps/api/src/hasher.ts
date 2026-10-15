@@ -1,22 +1,11 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
-
-const crcTable = new Uint32Array(256);
-for (let i = 0; i < 256; i++) {
-  let c = i;
-  for (let k = 0; k < 8; k++) {
-    c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-  }
-  crcTable[i] = c >>> 0;
-}
+import { crc32 as zlibCrc32 } from "node:zlib";
 
 export function computeCrc32(bytes: Uint8Array): string {
-  let crc = 0 ^ (-1);
-  for (let i = 0; i < bytes.length; i++) {
-    crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
-  }
-  return ((crc ^ (-1)) >>> 0).toString(16).toUpperCase().padStart(8, "0");
+  const crc = zlibCrc32(bytes);
+  return (crc >>> 0).toString(16).toUpperCase().padStart(8, "0");
 }
 
 export async function calculateFileHashes(filePath: string): Promise<{
@@ -30,21 +19,19 @@ export async function calculateFileHashes(filePath: string): Promise<{
   const sha1Hash = createHash("sha1");
   const md5Hash = createHash("md5");
 
-  let crc = 0 ^ (-1);
+  let currentCrc: number | undefined = undefined;
   const stream = createReadStream(filePath);
 
   for await (const chunk of stream) {
     const uint8Chunk = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
     sha1Hash.update(uint8Chunk);
     md5Hash.update(uint8Chunk);
-    for (let i = 0; i < uint8Chunk.length; i++) {
-      crc = (crc >>> 8) ^ crcTable[(crc ^ uint8Chunk[i]) & 0xFF];
-    }
+    currentCrc = currentCrc === undefined ? zlibCrc32(uint8Chunk) : zlibCrc32(uint8Chunk, currentCrc);
   }
 
   const sha1 = sha1Hash.digest("hex");
   const md5 = md5Hash.digest("hex");
-  const crc32 = ((crc ^ (-1)) >>> 0).toString(16).toUpperCase().padStart(8, "0");
+  const crc32 = ((currentCrc ?? 0) >>> 0).toString(16).toUpperCase().padStart(8, "0");
   const mtime = fileStat.mtime ? fileStat.mtime.getTime() : Date.now();
 
   return { sha1, md5, crc32, size: fileStat.size, mtime };

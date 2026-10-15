@@ -1,5 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { getDefaultConfigPath } from "./config.ts";
 
 export interface StateFileRecord {
   sha1: string;
@@ -29,8 +30,9 @@ export interface CliState {
   saves: Record<string, StateSaveRecord>;
 }
 
-export function getStatePath(configPath: string): string {
-  return resolve(dirname(configPath), "state.json");
+export function getStatePath(configPath?: string): string {
+  const targetConfig = configPath ? resolve(configPath) : getDefaultConfigPath();
+  return resolve(dirname(targetConfig), "state.json");
 }
 
 export async function loadState(statePath: string): Promise<CliState> {
