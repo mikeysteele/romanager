@@ -3,6 +3,7 @@ import { db } from "../db/index.ts";
 import { systemFirmware, scannedFiles } from "../db/schema.ts";
 import { SystemFirmwareSchema } from "@repo/shared";
 import { eq } from "drizzle-orm";
+import { assertWithinRoots, getAllowedStorageRoots, PathPolicyViolation } from "../path-policy.ts";
 
 export const firmwareRouter = new Hono();
 
@@ -20,6 +21,18 @@ firmwareRouter.post("/", async (c) => {
     }
 
     const fw = parseResult.data;
+
+    // Security check (S-2): Validate that firmware path is strictly within allowed storage roots
+    try {
+        const allowedRoots = await getAllowedStorageRoots();
+        assertWithinRoots(allowedRoots, fw.path, "Firmware path");
+    } catch (err) {
+        if (err instanceof PathPolicyViolation) {
+            return c.json({ error: "Firmware path must be within allowed library storage roots" }, 400);
+        }
+        return c.json({ error: "Failed to validate firmware path" }, 400);
+    }
+
     const id = fw.id || crypto.randomUUID();
 
     try {
@@ -33,8 +46,7 @@ firmwareRouter.post("/", async (c) => {
             crc32: fw.crc32
         }).returning();
 
-        // If mapped from scanned files, we might want to clean up `scanned_files` table.
-        // We'll trust the unmapped UI route to handle that, or do it here if needed.
+        // If mapped from scanned files, clean up scanned_files table.
         await db.delete(scannedFiles).where(eq(scannedFiles.path, fw.path));
 
         return c.json({ status: "success", firmware: result[0] });
