@@ -83,3 +83,22 @@ test("firmwareRouter: CRUD operations and SystemFirmwareSchema contract validati
         await db.delete(systems).where(eq(systems.id, sysId));
     }
 });
+
+test("firmwareRouter: rejects firmware paths outside allowed storage roots", async () => {
+    const maliciousPayload = {
+        id: `fw-exploit-${Date.now()}`,
+        systemId: "sys-exploit",
+        filename: "shadow",
+        path: "/etc/shadow",
+    };
+    const req = new Request("http://localhost/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(maliciousPayload),
+    });
+    const res = await firmwareRouter.request(req);
+    assertEquals(res.status, 400);
+    const json = await res.json();
+    assertEquals(json.error.includes("allowed library storage roots"), true);
+});
+

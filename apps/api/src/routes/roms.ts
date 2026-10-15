@@ -4,6 +4,7 @@ import { roms } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
 import { getDeletionWorker } from "../worker.ts";
 import { getRomById } from "../db/queries.ts";
+import { getAllowedStorageRoots } from "../path-policy.ts";
 
 export const romsRouter = new Hono();
 
@@ -66,11 +67,13 @@ romsRouter.delete("/:id", async (c) => {
         }
 
         const worker = getDeletionWorker();
+        const allowedRoots = await getAllowedStorageRoots();
         
         worker.postMessage({
             type: "DELETE_ROM",
             id: id,
-            paths: pathsToDelete
+            paths: pathsToDelete,
+            allowedRoots,
         });
 
         // Broadcast to clients so the UI updates

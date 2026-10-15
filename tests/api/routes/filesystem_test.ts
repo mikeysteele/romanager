@@ -35,3 +35,13 @@ test("GET /api/filesystem/browse handles non-existent path gracefully", async ()
     assertEquals(typeof json.currentPath, "string");
     assertEquals(Array.isArray(json.directories), true);
 });
+
+test("GET /api/filesystem/browse safely blocks traversal to sensitive host paths", async () => {
+    const req = new Request("http://localhost/browse?path=/etc");
+    const res = await filesystemRouter.request(req);
+    assertEquals(res.status, 200);
+    const json = await res.json();
+    // Path should have fallen back to allowed root, NOT /etc
+    assertEquals(json.currentPath !== "/etc", true);
+});
+

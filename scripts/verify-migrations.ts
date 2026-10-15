@@ -72,16 +72,15 @@ try {
     await fs.mkdir(baseDrizzleDir, { recursive: true });
 
     // Extract base ref drizzle folder
-    const archive = await runCmd("git", ["archive", baseRef, "drizzle"]);
+    const archive = await runCmd("sh", ["-c", `git archive "${baseRef}" drizzle | tar -x -C "${baseDrizzleDir}"`]);
     if (archive.code === 0) {
-      // Try writing archive buffer or fallback
       console.log(`🚀 [2/4] Applying base migrations from '${baseRef}'...`);
       const baseMigrate = await runCmd(
         "pnpm",
         ["--filter", "@romanager/api", "db:migrate"],
         {
           DB_URL: `file:${throwawayDbPath}`,
-          DRIZZLE_OUT: `${baseDrizzleDir}/drizzle`,
+          DRIZZLE_OUT: path.resolve(baseDrizzleDir, "drizzle"),
         }
       );
 
