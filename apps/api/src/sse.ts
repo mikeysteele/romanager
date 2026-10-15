@@ -1,4 +1,4 @@
-type Listener = (data: unknown) => void;
+type Listener = (data: unknown) => unknown;
 
 export class EventBus {
   private listeners: Record<string, Set<Listener>> = {};
@@ -19,7 +19,16 @@ export class EventBus {
   emit(event: string, data: unknown) {
     if (this.listeners[event]) {
       for (const listener of this.listeners[event]) {
-        listener(data);
+        try {
+          const res = listener(data);
+          if (res && typeof (res as Promise<unknown>).catch === "function") {
+            (res as Promise<unknown>).catch((err) => {
+              console.error(`[EventBus] Uncaught async error in listener for "${event}":`, err);
+            });
+          }
+        } catch (err) {
+          console.error(`[EventBus] Error in listener for "${event}":`, err);
+        }
       }
     }
   }

@@ -13,3 +13,4 @@ playwright-report
 test-results
 .features-gen
 storage/
+*.log

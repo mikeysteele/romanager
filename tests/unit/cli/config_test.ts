@@ -54,3 +54,15 @@ test("cli config: saves and loads with 0600 mode", async () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test("cli state: getStatePath resolves correctly for provided and default paths", async () => {
+  const { getStatePath } = await import("../../../apps/cli/src/state.ts");
+  const custom = getStatePath("/tmp/my-config/config.json");
+  assertEquals(custom, "/tmp/my-config/state.json");
+
+  // Empty string or undefined should resolve next to default config path, not CWD
+  const fromEmpty = getStatePath("");
+  const fromUndefined = getStatePath(undefined);
+  assertEquals(fromEmpty.endsWith("state.json"), true);
+  assertEquals(fromEmpty, fromUndefined);
+});

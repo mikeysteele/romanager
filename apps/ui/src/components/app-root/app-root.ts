@@ -42,7 +42,7 @@ export class AppRoot extends LitElement {
        border-bottom: 1px solid var(--border-color);
        display: flex;
        align-items: center;
-       flex-direction: row
+       flex-direction: row;
        justify-content: space-between;
        padding: 0 var(--spacing-xl);
        flex-shrink: 0;
@@ -62,7 +62,7 @@ export class AppRoot extends LitElement {
       flex: 1;
       display: grid;
       grid-template-areas: "sidebar main";
-      grid-template-columns: var(--sidebar-width) auto; /*;
+      grid-template-columns: var(--sidebar-width) auto;
     }
 
 
