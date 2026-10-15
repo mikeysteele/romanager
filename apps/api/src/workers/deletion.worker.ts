@@ -1,14 +1,16 @@
 import { parentPort } from "node:worker_threads";
 import { lstat, rm } from "node:fs/promises";
+import { isWithinRoots } from "../path-policy.ts";
 
 export interface DeletionJob {
     type: 'DELETE_ROM' | 'DELETE_GAME';
     id: string; // gameId or romId
     paths: string[];
+    allowedRoots?: string[];
 }
 
 export async function handleDeletionJob(data: DeletionJob, postMsg: (msg: { type: string; id: string }) => void): Promise<void> {
-    const { type, id, paths } = data;
+    const { type, id, paths, allowedRoots } = data;
 
     if (paths && paths.length > 0) {
         const PROTECTED_PREFIXES = ["/etc", "/var", "/usr", "/bin", "/sbin", "/boot", "/dev", "/sys", "/proc", "/lib", "/lib64"];
@@ -22,6 +24,14 @@ export async function handleDeletionJob(data: DeletionJob, postMsg: (msg: { type
                 if (normalized === "/" || normalized === "\\" || PROTECTED_PREFIXES.some(prefix => normalized === prefix || normalized.startsWith(prefix + "/"))) {
                     console.error("[Worker] Blocked deletion attempt of protected system path:", normalized);
                     continue;
+                }
+
+                // Security check (S-7): If allowedRoots provided, strictly enforce containment
+                if (allowedRoots && allowedRoots.length > 0) {
+                    if (!isWithinRoots(allowedRoots, normalized)) {
+                        console.error("[Worker] Refusing to delete file outside allowed storage roots:", normalized);
+                        continue;
+                    }
                 }
 
                 const stat = await lstat(normalized);
@@ -54,8 +64,4 @@ if (parentPort) {
     parentPort.on("message", (data: DeletionJob) => {
         handleDeletionJob(data, (msg) => parentPort!.postMessage(msg));
     });
-} else if (typeof self !== "undefined") {
-    (self as unknown as { onmessage: (e: { data: DeletionJob }) => void; postMessage: (msg: unknown) => void }).onmessage = async (e) => {
-        handleDeletionJob(e.data, (msg) => (self as unknown as { postMessage: (msg: unknown) => void }).postMessage(msg));
-    };
 }

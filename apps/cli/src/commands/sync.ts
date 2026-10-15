@@ -16,7 +16,7 @@ export interface SyncCommandOptions {
 
 export async function runSync(options: SyncCommandOptions): Promise<void> {
   const config = await loadConfig(options.configPath);
-  const statePath = getStatePath(options.configPath || "");
+  const statePath = getStatePath(options.configPath);
   const state = await loadState(statePath);
   const client = new ApiClient(config);
 

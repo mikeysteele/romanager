@@ -345,6 +345,7 @@ export async function scanRomsWithSets(
   const directorySets: DiscoveredSet[] = [];
   const filesByDir = new Map<string, DiscoveredFile[]>();
   let totalWalked = 0;
+  let lastProgressEmitTime = 0;
 
   for await (const entry of walk(rootDir, { includeDirs: true, followSymlinks: false })) {
     const normPath = normalizePath(entry.path);
@@ -397,7 +398,11 @@ export async function scanRomsWithSets(
 
     // It's a file
     totalWalked++;
-    if (onProgress) onProgress({ count: totalWalked, currentFile: entry.name });
+    const now = Date.now();
+    if (onProgress && (totalWalked === 1 || now - lastProgressEmitTime >= 100)) {
+      lastProgressEmitTime = now;
+      onProgress({ count: totalWalked, currentFile: entry.name });
+    }
 
     const isWhitelisted = await verifyFileAgainstWhitelist(normPath, entry.name, activeWhitelist);
     if (!isWhitelisted) continue;
@@ -420,6 +425,10 @@ export async function scanRomsWithSets(
       dir,
       size,
     });
+  }
+
+  if (onProgress && totalWalked > 0) {
+    onProgress({ count: totalWalked, currentFile: "Discovered files" });
   }
 
   // Step 2: Group loose files in each directory into sets

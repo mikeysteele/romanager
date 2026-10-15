@@ -37,7 +37,8 @@ export interface SyncPlan {
 export async function getFreeDiskBytes(dirPath: string): Promise<number | null> {
   try {
     const stats = await statfs(dirPath);
-    return Number(stats.bfree) * Number(stats.bsize);
+    const availableBlocks = stats.bavail !== undefined ? stats.bavail : stats.bfree;
+    return Number(availableBlocks) * Number(stats.bsize);
   } catch {
     // fallback to df command on unix
     try {

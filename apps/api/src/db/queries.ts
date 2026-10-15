@@ -8,7 +8,6 @@ import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
 // Since we don't know the exact schema generic args here without inference, 
 // using 'any' might be necessary but we can label it better or use a partial.
 // Actually, let's try to reference the db type.
-// deno-lint-ignore no-explicit-any
 type Tx = SQLiteTransaction<any, any, any, any>;
 
 import { getDefaultEsFolder } from "../platform-mappings.ts";
@@ -131,8 +130,9 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
         const platformRoms = rawRoms
             .filter(r => {
                 if (r.rom.systemId === plat.id) return true;
-                const sysName = r.systemName?.toLowerCase() || "";
-                const platName = plat.name.toLowerCase();
+                const sysName = r.systemName?.toLowerCase().trim();
+                const platName = plat.name.toLowerCase().trim();
+                if (!sysName || !platName) return false;
                 return sysName === platName || sysName.includes(platName) || platName.includes(sysName);
             })
             .map(r => ({

@@ -7,6 +7,7 @@ import { generateManifest } from "../manifest.ts";
 import { stat } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
+import { getAllowedStorageRoots, isWithinRoots } from "../path-policy.ts";
 
 export const syncRouter = new Hono<{ Variables: AuthVariables }>();
 
@@ -36,6 +37,12 @@ syncRouter.get("/files/:fileId", async (c) => {
 
   if (!filePath) {
     return c.json({ error: "File not found" }, 404);
+  }
+
+  // 1.5 Security check (S-2): Ensure file path is strictly within allowed storage roots
+  const allowedRoots = await getAllowedStorageRoots();
+  if (!isWithinRoots(allowedRoots, filePath)) {
+    return c.json({ error: "Access to requested file path is forbidden" }, 403);
   }
 
   // 2. Authorization check

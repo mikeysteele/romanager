@@ -11,16 +11,18 @@ unmappedRouter.get("/", async (c) => {
         const offsetParam = c.req.query("offset");
         let query = db.select()
             .from(scannedFiles)
-            .where(eq(scannedFiles.ignored, false));
+            .where(eq(scannedFiles.ignored, false))
+            .orderBy(scannedFiles.filename, scannedFiles.id);
 
         if (limitParam) {
-            const limit = parseInt(limitParam, 10);
-            if (!isNaN(limit) && limit > 0) {
+            const parsedLimit = parseInt(limitParam, 10);
+            if (!isNaN(parsedLimit) && parsedLimit > 0) {
+                const limit = Math.min(parsedLimit, 500);
                 query = query.limit(limit) as typeof query;
                 if (offsetParam) {
-                    const offset = parseInt(offsetParam, 10);
-                    if (!isNaN(offset) && offset > 0) {
-                        query = query.offset(offset) as typeof query;
+                    const parsedOffset = parseInt(offsetParam, 10);
+                    if (!isNaN(parsedOffset) && parsedOffset > 0) {
+                        query = query.offset(parsedOffset) as typeof query;
                     }
                 }
             }

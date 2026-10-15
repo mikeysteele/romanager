@@ -119,3 +119,43 @@ test("saves: upload, versioning, deduplication, and restore", async () => {
     await db.delete(devices).where(eq(devices.id, devId));
   }
 });
+
+test("saves: rejects directory traversal attempts on upload and download", async () => {
+  const devId = `dev-traversal-${Date.now()}`;
+  await db.insert(devices).values({
+    id: devId,
+    name: "Traversal Test Device",
+    preset: "batocera",
+  });
+  const apiKey = await createApiKeyRecord("Traversal Key", devId, "device");
+
+  try {
+    // 1. Upload attempt with directory traversal
+    const putTraversalReq = new Request("http://localhost/me/saves/..%2f..%2f..%2f..%2fetc/passwd", {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${apiKey.rawKey}`,
+        "Content-Type": "application/octet-stream",
+      },
+      body: "malicious payload",
+    });
+    const putRes = await devicesRouter.request(putTraversalReq);
+    assertEquals(putRes.status, 400);
+    const putJson = await putRes.json();
+    assertEquals(putJson.error.includes("directory traversal is forbidden"), true);
+
+    // 2. Download attempt with directory traversal
+    const getTraversalReq = new Request("http://localhost/me/saves/..%2f..%2f..%2f..%2fetc/passwd", {
+      headers: {
+        Authorization: `Bearer ${apiKey.rawKey}`,
+      },
+    });
+    const getRes = await devicesRouter.request(getTraversalReq);
+    assertEquals(getRes.status, 400);
+    const getJson = await getRes.json();
+    assertEquals(getJson.error.includes("directory traversal is forbidden"), true);
+  } finally {
+    await db.delete(devices).where(eq(devices.id, devId));
+  }
+});
+

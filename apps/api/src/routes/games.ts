@@ -6,6 +6,7 @@ import { generateId, slugify } from "../utils.ts";
 import { GameSchema} from "@repo/shared";
 import { getDeletionWorker } from "../worker.ts";
 import { eventBus } from "../sse.ts";
+import { getAllowedStorageRoots } from "../path-policy.ts";
 
 export const gamesRouter = new Hono();
 
@@ -61,10 +62,12 @@ gamesRouter.delete("/:id", async (c) => {
 
         if (pathsToDelete.length > 0) {
             const worker = getDeletionWorker();
+            const allowedRoots = await getAllowedStorageRoots();
             worker.postMessage({
                 type: "DELETE_GAME",
                 id: id,
-                paths: pathsToDelete
+                paths: pathsToDelete,
+                allowedRoots,
             });
         }
 

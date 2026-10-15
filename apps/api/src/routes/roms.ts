@@ -4,6 +4,7 @@ import { roms } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
 import { getDeletionWorker } from "../worker.ts";
 import { getRomById } from "../db/queries.ts";
+import { getAllowedStorageRoots } from "../path-policy.ts";
 
 export const romsRouter = new Hono();
 
@@ -11,15 +12,16 @@ romsRouter.get("/", async (c) => {
     try {
         const limitParam = c.req.query("limit");
         const offsetParam = c.req.query("offset");
-        let query = db.select().from(roms).where(eq(roms.pendingDelete, false));
+        let query = db.select().from(roms).where(eq(roms.pendingDelete, false)).orderBy(roms.filename, roms.id);
         if (limitParam) {
-            const limit = parseInt(limitParam, 10);
-            if (!isNaN(limit) && limit > 0) {
+            const parsedLimit = parseInt(limitParam, 10);
+            if (!isNaN(parsedLimit) && parsedLimit > 0) {
+                const limit = Math.min(parsedLimit, 500);
                 query = query.limit(limit) as typeof query;
                 if (offsetParam) {
-                    const offset = parseInt(offsetParam, 10);
-                    if (!isNaN(offset) && offset > 0) {
-                        query = query.offset(offset) as typeof query;
+                    const parsedOffset = parseInt(offsetParam, 10);
+                    if (!isNaN(parsedOffset) && parsedOffset > 0) {
+                        query = query.offset(parsedOffset) as typeof query;
                     }
                 }
             }
@@ -65,11 +67,13 @@ romsRouter.delete("/:id", async (c) => {
         }
 
         const worker = getDeletionWorker();
+        const allowedRoots = await getAllowedStorageRoots();
         
         worker.postMessage({
             type: "DELETE_ROM",
             id: id,
-            paths: pathsToDelete
+            paths: pathsToDelete,
+            allowedRoots,
         });
 
         // Broadcast to clients so the UI updates

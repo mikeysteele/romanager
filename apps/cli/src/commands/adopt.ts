@@ -15,7 +15,7 @@ export interface AdoptOptions {
 
 export async function runAdopt(options: AdoptOptions): Promise<void> {
   const config = await loadConfig(options.configPath);
-  const statePath = getStatePath(options.configPath || "");
+  const statePath = getStatePath(options.configPath);
   const state = await loadState(statePath);
   const client = new ApiClient(config);
 
