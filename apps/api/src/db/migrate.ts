@@ -101,6 +101,34 @@ async function baselineExistingDatabase(database: any, migrationsFolder: string)
   }
 }
 
+import { eq, isNull } from "drizzle-orm";
+import { systems } from "./schema.ts";
+import { getDefaultEmulatorConfig } from "../platform-mappings.ts";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function backfillSystemEmulationDefaults(database: any): Promise<void> {
+  try {
+    const unconfigured = await database
+      .select()
+      .from(systems)
+      .where(isNull(systems.emulatorCore));
+    for (const sys of unconfigured) {
+      const defaults = getDefaultEmulatorConfig(sys.slug || sys.name, sys.esFolder);
+      if (defaults.emulatorCore) {
+        await database
+          .update(systems)
+          .set({
+            emulatable: defaults.emulatable,
+            emulatorCore: defaults.emulatorCore,
+          })
+          .where(eq(systems.id, sys.id));
+      }
+    }
+  } catch {
+    // Ignore if systems table doesn't exist in custom partial migration test
+  }
+}
+
 /**
  * Runs pending Drizzle migrations using the appropriate dialect migrator.
  * Can be called at server startup or during test setup.
@@ -123,12 +151,14 @@ export async function runMigrations(
     try {
       const { migrate } = await import("drizzle-orm/libsql/migrator");
       await migrate(database, { migrationsFolder });
+      await backfillSystemEmulationDefaults(database);
       console.log("[Database] SQLite migrations applied successfully.");
       return true;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("duplicate column name") || msg.includes("already exists")) {
         console.warn("[Database] Notice during migrations (tables/columns already present):", msg);
+        await backfillSystemEmulationDefaults(database);
         return true;
       }
       console.error("[Database] Migration failed:", err);
@@ -139,6 +169,7 @@ export async function runMigrations(
     try {
       const { migrate } = await import("drizzle-orm/postgres-js/migrator");
       await migrate(database, { migrationsFolder });
+      await backfillSystemEmulationDefaults(database);
       console.log("[Database] PostgreSQL migrations applied successfully.");
       return true;
     } catch (err: unknown) {

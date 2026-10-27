@@ -1,12 +1,173 @@
 import { z } from "zod";
 export { z };
 
+export interface LibretroWasmCoreOption {
+  id: string;
+  name: string;
+  systems: string;
+}
+
+export const LIBRETRO_WASM_CORES: LibretroWasmCoreOption[] = [
+  { id: "fceumm", name: "FCEUmm", systems: "NES / Famicom" },
+  { id: "nestopia", name: "Nestopia", systems: "NES / Famicom" },
+  { id: "quicknes", name: "QuickNES", systems: "NES / Famicom" },
+  { id: "snes9x", name: "Snes9x", systems: "Super Nintendo (SNES / SFC)" },
+  { id: "snes9x2010", name: "Snes9x 2010", systems: "Super Nintendo (SNES / SFC)" },
+  { id: "snes9x2005", name: "Snes9x 2005", systems: "Super Nintendo (SNES / SFC)" },
+  { id: "snes9x2002", name: "Snes9x 2002", systems: "Super Nintendo (SNES / SFC)" },
+  { id: "gambatte", name: "Gambatte", systems: "Game Boy / Game Boy Color" },
+  { id: "gearboy", name: "Gearboy", systems: "Game Boy / Game Boy Color" },
+  { id: "tgbdual", name: "TGB Dual", systems: "Game Boy / GBC (Link Cable)" },
+  { id: "mgba", name: "mGBA", systems: "Game Boy Advance / GB / GBC" },
+  { id: "vba_next", name: "VBA Next", systems: "Game Boy Advance" },
+  { id: "genesis_plus_gx", name: "Genesis Plus GX", systems: "Genesis / Mega Drive / Master System / Game Gear / Sega CD" },
+  { id: "genesis_plus_gx_wide", name: "Genesis Plus GX Wide", systems: "Genesis / Mega Drive (Widescreen)" },
+  { id: "picodrive", name: "PicoDrive", systems: "Genesis / Mega Drive / Master System / Sega CD / 32X" },
+  { id: "gearsystem", name: "Gearsystem", systems: "Master System / Game Gear / SG-1000" },
+  { id: "pcsx_rearmed", name: "PCSX ReARMed", systems: "Sony PlayStation (PS1 / PSX)" },
+  { id: "fbneo", name: "FinalBurn Neo", systems: "Arcade / Neo Geo" },
+  { id: "fbalpha2012", name: "FB Alpha 2012", systems: "Arcade" },
+  { id: "fbalpha2012_neogeo", name: "FB Alpha 2012 Neo Geo", systems: "Neo Geo" },
+  { id: "fbalpha2012_cps1", name: "FB Alpha 2012 CPS-1", systems: "Capcom CPS-1" },
+  { id: "fbalpha2012_cps2", name: "FB Alpha 2012 CPS-2", systems: "Capcom CPS-2" },
+  { id: "neocd", name: "NeoCD", systems: "Neo Geo CD" },
+  { id: "mame2003_plus", name: "MAME 2003-Plus", systems: "Arcade (MAME 0.78+)" },
+  { id: "mame2003", name: "MAME 2003", systems: "Arcade (MAME 0.78)" },
+  { id: "mame2000", name: "MAME 2000", systems: "Arcade (MAME 0.37b5)" },
+  { id: "mednafen_pce_fast", name: "Beetle PCE Fast", systems: "PC Engine / TurboGrafx-16" },
+  { id: "geargrafx", name: "Geargrafx", systems: "PC Engine / TurboGrafx-16 / SuperGrafx" },
+  { id: "mednafen_ngp", name: "Beetle NeoPop", systems: "Neo Geo Pocket / Color" },
+  { id: "mednafen_wswan", name: "Beetle WonderSwan", systems: "WonderSwan / Color" },
+  { id: "mednafen_vb", name: "Beetle VB", systems: "Virtual Boy" },
+  { id: "handy", name: "Handy", systems: "Atari Lynx" },
+  { id: "mednafen_lynx", name: "Beetle Lynx", systems: "Atari Lynx" },
+  { id: "gearcoleco", name: "Gearcoleco", systems: "ColecoVision" },
+  { id: "o2em", name: "O2EM", systems: "Magnavox Odyssey 2" },
+  { id: "opera", name: "Opera", systems: "3DO" },
+  { id: "vecx", name: "VecX", systems: "Vectrex" },
+  { id: "freechaf", name: "FreeChaF", systems: "Fairchild Channel F" },
+  { id: "vice_x64", name: "VICE x64", systems: "Commodore 64" },
+  { id: "vice_x128", name: "VICE x128", systems: "Commodore 128" },
+  { id: "vice_xvic", name: "VICE xvic", systems: "Commodore VIC-20" },
+];
+
+const DEFAULT_SYSTEM_CORES: Record<string, string> = {
+  // Nintendo
+  "nes": "fceumm",
+  "nintendo-entertainment-system": "fceumm",
+  "famicom": "fceumm",
+  "fds": "fceumm",
+  "snes": "snes9x",
+  "super-nintendo": "snes9x",
+  "super-nintendo-entertainment-system": "snes9x",
+  "sfc": "snes9x",
+  "gb": "gambatte",
+  "game-boy": "gambatte",
+  "gbc": "gambatte",
+  "game-boy-color": "gambatte",
+  "gba": "mgba",
+  "game-boy-advance": "mgba",
+  "virtualboy": "mednafen_vb",
+  "virtual-boy": "mednafen_vb",
+  "vb": "mednafen_vb",
+
+  // Sega
+  "megadrive": "genesis_plus_gx",
+  "genesis": "genesis_plus_gx",
+  "sega-genesis": "genesis_plus_gx",
+  "sega-mega-drive": "genesis_plus_gx",
+  "mega-drive": "genesis_plus_gx",
+  "mastersystem": "genesis_plus_gx",
+  "master-system": "genesis_plus_gx",
+  "sega-master-system": "genesis_plus_gx",
+  "sms": "genesis_plus_gx",
+  "gamegear": "genesis_plus_gx",
+  "game-gear": "genesis_plus_gx",
+  "sega-game-gear": "genesis_plus_gx",
+  "gg": "genesis_plus_gx",
+  "segacd": "genesis_plus_gx",
+  "sega-cd": "genesis_plus_gx",
+  "mega-cd": "genesis_plus_gx",
+  "sega32x": "picodrive",
+  "sega-32x": "picodrive",
+  "32x": "picodrive",
+  "sg-1000": "gearsystem",
+  "sg1000": "gearsystem",
+
+  // Sony
+  "psx": "pcsx_rearmed",
+  "ps1": "pcsx_rearmed",
+  "playstation": "pcsx_rearmed",
+  "playstation1": "pcsx_rearmed",
+  "playstation-1": "pcsx_rearmed",
+
+  // Arcade & SNK
+  "arcade": "fbneo",
+  "fbneo": "fbneo",
+  "fba": "fbalpha2012",
+  "mame": "mame2003_plus",
+  "neogeo": "fbneo",
+  "neo-geo": "fbneo",
+  "neogeocd": "neocd",
+  "neo-geo-cd": "neocd",
+  "ngp": "mednafen_ngp",
+  "ngpc": "mednafen_ngp",
+  "neo-geo-pocket": "mednafen_ngp",
+  "neo-geo-pocket-color": "mednafen_ngp",
+
+  // NEC / Bandai / Atari / Others
+  "pcengine": "mednafen_pce_fast",
+  "pc-engine": "mednafen_pce_fast",
+  "tg16": "mednafen_pce_fast",
+  "turbografx-16": "mednafen_pce_fast",
+  "supergrafx": "geargrafx",
+  "wonderswan": "mednafen_wswan",
+  "wonderswancolor": "mednafen_wswan",
+  "wonderswan-color": "mednafen_wswan",
+  "lynx": "handy",
+  "atari-lynx": "handy",
+  "colecovision": "gearcoleco",
+  "odyssey2": "o2em",
+  "3do": "opera",
+  "vectrex": "vecx",
+  "channelf": "freechaf",
+  "c64": "vice_x64",
+  "commodore-64": "vice_x64",
+};
+
+export function getDefaultEmulatorConfig(
+  slugOrName?: string | null,
+  esFolder?: string | null
+): { emulatable: boolean; emulatorCore: string | null } {
+  const candidates = [esFolder, slugOrName]
+    .filter((v): v is string => Boolean(v))
+    .map((v) => v.toLowerCase().trim().replace(/[_\s]+/g, "-"));
+
+  for (const candidate of candidates) {
+    if (DEFAULT_SYSTEM_CORES[candidate]) {
+      return { emulatable: true, emulatorCore: DEFAULT_SYSTEM_CORES[candidate] };
+    }
+  }
+
+  for (const candidate of candidates) {
+    for (const [key, core] of Object.entries(DEFAULT_SYSTEM_CORES)) {
+      if (candidate === key || (key.length >= 3 && candidate.split("-").includes(key))) {
+        return { emulatable: true, emulatorCore: core };
+      }
+    }
+  }
+
+  return { emulatable: false, emulatorCore: null };
+}
+
 export const PlatformSchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
   path: z.string().nullable().optional(),
   esFolder: z.string().nullable().optional(),
+  emulatable: z.boolean().optional(),
+  emulatorCore: z.string().nullable().optional(),
 });
 export type Platform = z.infer<typeof PlatformSchema>;
 
@@ -65,6 +226,8 @@ export const RomSchema = z.object({
   md5: z.string().optional().nullable(),
   sha1: z.string().optional().nullable(),
   platform: z.string().optional(), // Deprecated in GameRead responses
+  emulatable: z.boolean().optional(),
+  emulatorCore: z.string().nullable().optional(),
   pendingDelete: z.boolean().optional().nullable(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
