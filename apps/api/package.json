@@ -9,6 +9,7 @@
     "dev": "tsx watch --env-file-if-exists=.env --env-file-if-exists=../../.env main.ts",
     "start": "tsx --env-file-if-exists=.env --env-file-if-exists=../../.env main.ts",
     "db:generate": "drizzle-kit generate",
+    "db:generate:pg": "DIALECT=postgresql drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push"
   },
@@ -21,6 +22,7 @@
     "drizzle-orm": "^0.38.3",
     "drizzle-zod": "^0.5.1",
     "hono": "^4.6.14",
+    "postgres": "^3.4.9",
     "zod": "^3.22.4"
   },
   "devDependencies": {
