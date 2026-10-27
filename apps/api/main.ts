@@ -35,8 +35,9 @@ function resolveAppDir(dirFromEnv: string | undefined, baseDir: string): string 
   return candidates[0];
 }
 
-const ROMS_DIR = process.env.ROMS_DIR || resolve(__dirname, "../../roms");
-const APP_DIR = resolveAppDir(process.env.APP_DIR, __dirname);
+const apiRoot = __dirname.endsWith("/dist") || __dirname.endsWith("\\dist") ? resolve(__dirname, "..") : __dirname;
+const ROMS_DIR = process.env.ROMS_DIR || resolve(apiRoot, "../../roms");
+const APP_DIR = resolveAppDir(process.env.APP_DIR, apiRoot);
 const PORT = Number(process.env.PORT) || 8000;
 
 // Apply pending database migrations on boot before listening
