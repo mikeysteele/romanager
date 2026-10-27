@@ -43,7 +43,7 @@
     "oxlint-tsgolint": "^7.0.2004",
     "playwright-bdd": "^9.2.1",
     "postject": "1.0.0-alpha.6",
-    "rolldown": "^1.2.13",
+    "rolldown": "^1.2.15",
     "tsx": "^4.19.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
