@@ -21,6 +21,7 @@
     "lint": "oxlint --type-aware",
     "typecheck": "tsc --noEmit",
     "db:generate": "pnpm --filter @romanager/api exec drizzle-kit generate --config=drizzle.config.ts",
+    "db:generate:pg": "pnpm --filter @romanager/api run db:generate:pg",
     "db:migrate": "pnpm --filter @romanager/api exec drizzle-kit migrate --config=drizzle.config.ts",
     "db:push": "pnpm --filter @romanager/api exec drizzle-kit push --config=drizzle.config.ts"
   },

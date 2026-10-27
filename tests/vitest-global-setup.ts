@@ -11,7 +11,7 @@ export default function setup() {
   process.env.DB_URL = dbUrl;
   
   // Ensure fresh test database schema is pushed
-  execSync(`pnpm --filter @romanager/api exec drizzle-kit push --config=drizzle.config.ts`, {
+  execSync(`pnpm --filter @romanager/api exec drizzle-kit push --force --config=drizzle.config.ts`, {
     cwd: rootDir,
     stdio: "inherit",
     env: { ...process.env, DB_URL: dbUrl },
