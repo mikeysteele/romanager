@@ -158,3 +158,41 @@ test("PATCH /:id updates esFolder and name", async () => {
     }
 });
 
+test("POST / sets default browser emulation config and PATCH /:id updates emulatable and emulatorCore", async () => {
+    const sysId = "test-sys-emu-" + Date.now();
+    const createReq = new Request("http://localhost/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            id: sysId,
+            name: "Super Nintendo Entertainment System",
+            slug: "snes-test-" + Date.now(),
+            esFolder: "snes",
+        }),
+    });
+
+    try {
+        const createRes = await systemsRouter.request(createReq);
+        assertEquals(createRes.status, 200);
+        const createData = await createRes.json();
+        const created = SystemSchema.parse(createData.system);
+        assertEquals(created.emulatable, true);
+        assertEquals(created.emulatorCore, "snes9x");
+
+        const patchReq = new Request(`http://localhost/${created.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emulatable: false, emulatorCore: "bsnes" }),
+        });
+        const patchRes = await systemsRouter.request(patchReq);
+        assertEquals(patchRes.status, 200);
+        const patched = SystemSchema.parse(await patchRes.json());
+        assertEquals(patched.emulatable, false);
+        assertEquals(patched.emulatorCore, "bsnes");
+
+        await db.delete(systems).where(eq(systems.id, created.id));
+    } finally {
+        await db.delete(systems).where(eq(systems.id, sysId));
+    }
+});
+

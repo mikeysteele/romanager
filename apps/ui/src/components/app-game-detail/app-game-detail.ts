@@ -2,7 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { toast } from '@repo/ui-components';
 import '@repo/ui-components';
-import { fetchAndValidate, GameReadSchema, type GameRead, type Rom } from '@repo/shared';
+import { fetchAndValidate, GameReadSchema, getDefaultEmulatorConfig, type GameRead, type Rom } from '@repo/shared';
 import z from "zod";
 
 function formatBytes(bytes: number, decimals = 2) {
@@ -45,7 +45,10 @@ function renderFilesTable(game: GameRead | undefined | null, onDelete: (id: stri
         <div class="files-section">
             <h3 class="section-header">Files</h3>
             <ui-tabs>
-                ${uniquePlatforms.map(platform => html`
+                ${uniquePlatforms.map(platform => {
+                    const platDefaults = getDefaultEmulatorConfig(platform.slug || platform.name, platform.esFolder || platform.path);
+                    const platEmulatable = platform.emulatable !== undefined ? Boolean(platform.emulatable) : platDefaults.emulatable;
+                    return html`
                     <ui-tab-panel name="${platform.name}">
                         <table class="files-table">
                             <thead>
@@ -59,7 +62,9 @@ function renderFilesTable(game: GameRead | undefined | null, onDelete: (id: stri
                                 </tr>
                             </thead>
                             <tbody>
-                                ${(platform.roms || []).map((rom: Rom) => html`
+                                ${(platform.roms || []).map((rom: Rom) => {
+                                    const canEmulate = rom.emulatable !== undefined ? Boolean(rom.emulatable) : platEmulatable;
+                                    return html`
                                     <tr>
                                         <td class="filename">${rom.filename}</td>
                                         <td class="size-col">${formatBytes(rom.size)}</td>
@@ -67,17 +72,23 @@ function renderFilesTable(game: GameRead | undefined | null, onDelete: (id: stri
                                         <td>${rom.crc32 ? html`<span class="hash-val">${rom.crc32}</span>` : '-'}</td>
                                         <td>${rom.md5 ? html`<span class="hash-val">${rom.md5}</span>` : '-'}</td>
                                         <td class="actions-cell">
-                                            <div style="display: flex; gap: var(--spacing-sm); justify-content: flex-end;">
-                                                <ui-button variant="primary" href="/play/${rom.id}">Play / Open</ui-button>
+                                            <div style="display: flex; gap: var(--spacing-sm); justify-content: flex-end; align-items: center;">
+                                                ${canEmulate ? html`
+                                                    <ui-button variant="primary" href="/play/${rom.id}">Play / Open</ui-button>
+                                                ` : html`
+                                                    <ui-badge variant="secondary" title="Enable browser emulation for ${platform.name} in Settings → Platforms & Firmware">Browser Emulation Off</ui-badge>
+                                                `}
                                                 <ui-button variant="error" @click=${() => onDelete(rom.id)}>Delete</ui-button>
                                             </div>
                                         </td>
                                     </tr>
-                                `)}
+                                `;
+                                })}
                             </tbody>
                         </table>
                     </ui-tab-panel>
-                `)}
+                `;
+                })}
             </ui-tabs>
         </div>
       `;

@@ -24,7 +24,10 @@ systemsRouter.post("/", async (c) => {
     
     try {
         const sys = parseResult.data;
-        const result = await findOrCreateSystem(sys.name, sys.path, sys.esFolder || null);
+        const result = await findOrCreateSystem(sys.name, sys.path, sys.esFolder || null, {
+            emulatable: sys.emulatable,
+            emulatorCore: sys.emulatorCore,
+        });
         eventBus.emit('sse-message', {
             type: 'done',
             action: 'platform-created',
@@ -50,10 +53,18 @@ systemsRouter.patch("/:id", async (c) => {
     const id = c.req.param("id");
     try {
         const body = await c.req.json();
-        const updates: { esFolder?: string | null; name?: string; path?: string | null } = {};
+        const updates: {
+            esFolder?: string | null;
+            name?: string;
+            path?: string | null;
+            emulatable?: boolean;
+            emulatorCore?: string | null;
+        } = {};
         if ("esFolder" in body) updates.esFolder = body.esFolder;
         if ("name" in body) updates.name = body.name;
         if ("path" in body) updates.path = body.path;
+        if ("emulatable" in body) updates.emulatable = Boolean(body.emulatable);
+        if ("emulatorCore" in body) updates.emulatorCore = body.emulatorCore || null;
 
         await db.update(systems).set(updates).where(eq(systems.id, id));
         const updated = await db.select().from(systems).where(eq(systems.id, id)).get();

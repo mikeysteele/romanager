@@ -77,3 +77,6 @@ export function getDefaultEsFolder(slugOrName: string): string | null {
   }
   return null;
 }
+
+export { getDefaultEmulatorConfig, LIBRETRO_WASM_CORES } from "@repo/shared";
+

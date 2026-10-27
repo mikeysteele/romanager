@@ -2,30 +2,74 @@ import { db } from "./index.ts";
 import { games, roms, romFiles, systems, settings, platforms, gamePlatforms, systemFirmware, fileTypeWhitelist } from "./schema.ts";
 import { eq, like, inArray, and, or, sql } from "drizzle-orm";
 import { slugify } from "../utils.ts";
-import { SQLiteTransaction } from "drizzle-orm/sqlite-core";
+// Define a generic transaction type compatible across both SQLite and Postgres
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Tx = any;
 
-// Define a broad transaction type or use strictly if possible.
-// Since we don't know the exact schema generic args here without inference, 
-// using 'any' might be necessary but we can label it better or use a partial.
-// Actually, let's try to reference the db type.
-type Tx = SQLiteTransaction<any, any, any, any>;
+import { getDefaultEsFolder, getDefaultEmulatorConfig } from "../platform-mappings.ts";
 
-import { getDefaultEsFolder } from "../platform-mappings.ts";
+export interface SystemEmulationOverrides {
+  emulatable?: boolean;
+  emulatorCore?: string | null;
+}
 
-export async function findOrCreateSystem(name: string, path: string | null = null, esFolder: string | null = null, tx: Tx = db as unknown as Tx) {
+export async function findOrCreateSystem(
+  name: string,
+  path: string | null = null,
+  esFolder: string | null = null,
+  txOrOverrides: Tx | SystemEmulationOverrides = db as unknown as Tx,
+  maybeTx: Tx = db as unknown as Tx
+) {
+  let overrides: SystemEmulationOverrides = {};
+  let tx: Tx = maybeTx;
+  if (txOrOverrides && typeof txOrOverrides === "object" && "select" in txOrOverrides) {
+    tx = txOrOverrides;
+  } else if (txOrOverrides && typeof txOrOverrides === "object") {
+    overrides = txOrOverrides as SystemEmulationOverrides;
+  }
+
   const existing = await tx.select().from(systems).where(eq(systems.name, name));
   if (existing.length > 0) {
-    if (!existing[0].esFolder && (esFolder || getDefaultEsFolder(existing[0].slug))) {
-      const folder = esFolder || getDefaultEsFolder(existing[0].slug);
-      await tx.update(systems).set({ esFolder: folder }).where(eq(systems.id, existing[0].id));
-      existing[0].esFolder = folder;
+    const sys = existing[0];
+    const updates: Partial<typeof systems.$inferInsert> = {};
+    const folder = esFolder || sys.esFolder || getDefaultEsFolder(sys.slug);
+    if (!sys.esFolder && folder) {
+      updates.esFolder = folder;
+      sys.esFolder = folder;
     }
-    return existing[0];
+    if (overrides.emulatable !== undefined) {
+      updates.emulatable = overrides.emulatable;
+      sys.emulatable = overrides.emulatable;
+    }
+    if (overrides.emulatorCore !== undefined) {
+      updates.emulatorCore = overrides.emulatorCore;
+      sys.emulatorCore = overrides.emulatorCore;
+    } else if (sys.emulatorCore === null) {
+      const defaults = getDefaultEmulatorConfig(sys.slug || sys.name, folder);
+      if (defaults.emulatorCore) {
+        updates.emulatorCore = defaults.emulatorCore;
+        sys.emulatorCore = defaults.emulatorCore;
+        if (overrides.emulatable === undefined) {
+          updates.emulatable = defaults.emulatable;
+          sys.emulatable = defaults.emulatable;
+        }
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      await tx.update(systems).set(updates).where(eq(systems.id, sys.id));
+    }
+    return sys;
   }
   const slug = slugify(name);
   const id = crypto.randomUUID();
   const folder = esFolder || getDefaultEsFolder(slug);
-  const result = await tx.insert(systems).values({ id, name, slug, path, esFolder: folder }).returning();
+  const defaults = getDefaultEmulatorConfig(slug, folder);
+  const emulatable = overrides.emulatable !== undefined ? overrides.emulatable : defaults.emulatable;
+  const emulatorCore = overrides.emulatorCore !== undefined ? overrides.emulatorCore : defaults.emulatorCore;
+  const result = await tx
+    .insert(systems)
+    .values({ id, name, slug, path, esFolder: folder, emulatable, emulatorCore })
+    .returning();
   return result[0];
 }
 
@@ -99,10 +143,14 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
     .innerJoin(platforms, eq(gamePlatforms.platformId, platforms.id))
     .where(eq(gamePlatforms.gameId, game.id));
 
-    // Fetch associated ROMs with system name
+    // Fetch associated ROMs with system metadata
     const rawRoms = await db.select({
         rom: roms,
-        systemName: systems.name
+        systemName: systems.name,
+        systemSlug: systems.slug,
+        systemEsFolder: systems.esFolder,
+        systemEmulatable: systems.emulatable,
+        systemEmulatorCore: systems.emulatorCore,
     })
     .from(roms)
     .leftJoin(systems, eq(roms.systemId, systems.id))
@@ -121,24 +169,45 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
     }
 
     // Map and deduplicate ROMs into their respective platforms by platform name
-    const uniquePlatformsMap = new Map<string, { id: string; name: string; slug: string; roms: (typeof roms.$inferSelect & { files?: typeof allRomFiles })[] }>();
+    const uniquePlatformsMap = new Map<string, {
+        id: string;
+        name: string;
+        slug: string;
+        emulatable: boolean;
+        emulatorCore: string | null;
+        roms: (typeof roms.$inferSelect & { files?: typeof allRomFiles; emulatable: boolean; emulatorCore: string | null })[];
+    }>();
 
     for (const plat of gamePlats) {
         const platKey = plat.name.toLowerCase().trim();
         const existing = uniquePlatformsMap.get(platKey);
 
-        const platformRoms = rawRoms
-            .filter(r => {
-                if (r.rom.systemId === plat.id) return true;
-                const sysName = r.systemName?.toLowerCase().trim();
-                const platName = plat.name.toLowerCase().trim();
-                if (!sysName || !platName) return false;
-                return sysName === platName || sysName.includes(platName) || platName.includes(sysName);
-            })
-            .map(r => ({
+        const matchingRawRoms = rawRoms.filter(r => {
+            if (r.rom.systemId === plat.id) return true;
+            const sysName = r.systemName?.toLowerCase().trim();
+            const platName = plat.name.toLowerCase().trim();
+            if (!sysName || !platName) return false;
+            return sysName === platName || sysName.includes(platName) || platName.includes(sysName);
+        });
+
+        const platformRoms = matchingRawRoms.map(r => {
+            const fallback = getDefaultEmulatorConfig(r.systemSlug || r.systemName || plat.slug, r.systemEsFolder);
+            const emulatable = r.systemEmulatable !== null && r.systemEmulatable !== undefined
+                ? Boolean(r.systemEmulatable)
+                : fallback.emulatable;
+            const emulatorCore = r.systemEmulatorCore ?? fallback.emulatorCore;
+            return {
                 ...r.rom,
+                emulatable,
+                emulatorCore,
                 files: romFilesMap.get(r.rom.id) || []
-            }));
+            };
+        });
+
+        const firstRom = platformRoms[0];
+        const platFallback = getDefaultEmulatorConfig(plat.slug || plat.name, null);
+        const platEmulatable = firstRom ? firstRom.emulatable : platFallback.emulatable;
+        const platCore = firstRom ? firstRom.emulatorCore : platFallback.emulatorCore;
 
         if (existing) {
             const seenRomIds = new Set(existing.roms.map(r => r.id));
@@ -148,9 +217,15 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
                     seenRomIds.add(rom.id);
                 }
             }
+            if (firstRom) {
+                existing.emulatable = firstRom.emulatable;
+                existing.emulatorCore = firstRom.emulatorCore;
+            }
         } else {
             uniquePlatformsMap.set(platKey, {
                 ...plat,
+                emulatable: platEmulatable,
+                emulatorCore: platCore,
                 roms: platformRoms
             });
         }
@@ -339,18 +414,29 @@ export async function getRomById(id: string) {
     const rom = await db.select().from(roms).where(and(eq(roms.id, id), eq(roms.pendingDelete, false))).get();
     if (!rom) return null;
 
-    let system = null;
+    let system: (typeof systems.$inferSelect & { firmware?: (typeof systemFirmware.$inferSelect)[] }) | null = null;
+    let firmware: (typeof systemFirmware.$inferSelect)[] = [];
     if (rom.systemId) {
-        system = await db.select().from(systems).where(eq(systems.id, rom.systemId)).get();
+        const sysRow = await db.select().from(systems).where(eq(systems.id, rom.systemId)).get();
+        if (sysRow) {
+            firmware = await db.select().from(systemFirmware).where(eq(systemFirmware.systemId, sysRow.id));
+            system = { ...sysRow, firmware };
+        }
     }
 
     const files = await db.select().from(romFiles).where(eq(romFiles.romId, id));
-    
+    const fallback = getDefaultEmulatorConfig(system?.slug || system?.name, system?.esFolder);
+    const emulatable = system ? Boolean(system.emulatable) : fallback.emulatable;
+    const emulatorCore = system?.emulatorCore || fallback.emulatorCore;
+
     return { 
         ...rom, 
         files,
+        firmware,
         platform: system ? system.name : "unknown",
-        system: system
+        emulatable,
+        emulatorCore,
+        system
     };
 }
 
