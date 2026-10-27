@@ -35,7 +35,7 @@
     "drizzle-orm": "^0.38.4",
     "jsdom": "^25.0.1",
     "lefthook": "^1.10.8",
-    "lint-staged": "^15.4.3",
+    "lint-staged": "^17.6.0",
     "oxlint": "^1.88.0",
     "oxlint-tsgolint": "^7.0.2004",
     "playwright-bdd": "^9.2.1",
