@@ -7,7 +7,9 @@
   },
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env --env-file-if-exists=../../.env main.ts",
-    "start": "tsx --env-file-if-exists=.env --env-file-if-exists=../../.env main.ts",
+    "build": "rolldown -c rolldown.config.mjs",
+    "prestart": "rolldown -c rolldown.config.mjs",
+    "start": "node --env-file-if-exists=.env --env-file-if-exists=../../.env dist/main.js",
     "db:generate": "drizzle-kit generate",
     "db:generate:pg": "DIALECT=postgresql drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

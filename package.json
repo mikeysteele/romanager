@@ -11,6 +11,7 @@
     "dev:ui": "pnpm --filter @romanager/ui dev",
     "start": "pnpm --filter @romanager/api start",
     "build": "pnpm --recursive run build",
+    "build:api": "pnpm --filter @romanager/api build",
     "build:ui": "pnpm --filter @romanager/ui build",
     "build:cli": "pnpm --filter @repo/cli build:sea",
     "test": "vitest run",
@@ -23,13 +24,15 @@
     "db:generate": "pnpm --filter @romanager/api exec drizzle-kit generate --config=drizzle.config.ts",
     "db:generate:pg": "pnpm --filter @romanager/api run db:generate:pg",
     "db:migrate": "pnpm --filter @romanager/api exec drizzle-kit migrate --config=drizzle.config.ts",
-    "db:push": "pnpm --filter @romanager/api exec drizzle-kit push --config=drizzle.config.ts"
+    "db:push": "pnpm --filter @romanager/api exec drizzle-kit push --config=drizzle.config.ts",
+    "docker:build": "podman --storage-opt overlay.mount_program=/usr/bin/fuse-overlayfs build --network=host --format docker -t registry.lan.michaelwestcott.me/romanager:latest .",
+    "docker:push": "podman push registry.lan.michaelwestcott.me/romanager:latest"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^19.6.0",
     "@libsql/client": "^0.14.0",
-    "@playwright/test": "^1.49.1",
+    "@playwright/test": "^1.64.1",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^26.6.5",
     "drizzle-orm": "^0.38.4",

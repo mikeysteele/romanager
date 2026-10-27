@@ -3,15 +3,35 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: registry.lan.michaelwestcott.me/romanager:latest
     container_name: romanager
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       - PORT=8000
-      - DB_URL=file:/data/romanager.db
+      - DB_URL=${DB_URL:-file:/data/romanager.db}
       - ROMS_DIR=/roms
       - RAWG_API_KEY=${RAWG_API_KEY:-}
     volumes:
       - ./data:/data
       - ./roms:/roms
+
+  # Optional companion PostgreSQL service (enable with --profile postgres)
+  postgres:
+    image: postgres:17-alpine
+    container_name: romanager-postgres
+    restart: unless-stopped
+    profiles:
+      - postgres
+    environment:
+      POSTGRES_USER: romanager
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-romanager}
+      POSTGRES_DB: romanager
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
