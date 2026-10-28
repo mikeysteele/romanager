@@ -18,7 +18,7 @@
   "dependencies": {
     "@hono/node-server": "^2.1.5",
     "@jsr/smallweb__webdav": "^0.0.1",
-    "@libsql/client": "^0.14.0",
+    "@libsql/client": "^0.18.0",
     "@repo/shared": "workspace:*",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.4",
