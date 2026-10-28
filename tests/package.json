@@ -17,7 +17,7 @@
   "dependencies": {
     "@repo/shared": "workspace:*",
     "@repo/ui-components": "workspace:*",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.4",
     "zod": "^3.22.4"
   },
   "devDependencies": {

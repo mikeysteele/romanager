@@ -21,7 +21,7 @@
     "@libsql/client": "^0.14.0",
     "@repo/shared": "workspace:*",
     "dotenv": "^16.4.7",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.4",
     "drizzle-zod": "^0.5.1",
     "hono": "^4.6.14",
     "postgres": "^3.4.9",
