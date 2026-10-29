@@ -101,25 +101,41 @@ async function baselineExistingDatabase(database: any, migrationsFolder: string)
   }
 }
 
-import { eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { systems } from "./schema.ts";
-import { getDefaultEmulatorConfig } from "../platform-mappings.ts";
+import { getDefaultEmulatorConfig, getCoresForPlatform, getDefaultEsFolder } from "../platform-mappings.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function backfillSystemEmulationDefaults(database: any): Promise<void> {
   try {
-    const unconfigured = await database
-      .select()
-      .from(systems)
-      .where(isNull(systems.emulatorCore));
-    for (const sys of unconfigured) {
-      const defaults = getDefaultEmulatorConfig(sys.slug || sys.name, sys.esFolder);
-      if (defaults.emulatorCore) {
+    const allSystems = await database.select().from(systems);
+    for (const sys of allSystems) {
+      const expectedFolder = getDefaultEsFolder(sys.slug || sys.name);
+      const effectiveFolder =
+        sys.esFolder === "psx" && expectedFolder && expectedFolder !== "psx"
+          ? expectedFolder
+          : sys.esFolder;
+      const availableCores = getCoresForPlatform(sys.slug || sys.name, effectiveFolder || sys.path);
+      const defaults = getDefaultEmulatorConfig(sys.slug || sys.name, effectiveFolder || sys.path);
+
+      if (availableCores.length === 0) {
+        if (sys.emulatable || sys.emulatorCore !== null || effectiveFolder !== sys.esFolder) {
+          await database
+            .update(systems)
+            .set({
+              emulatable: false,
+              emulatorCore: null,
+              esFolder: effectiveFolder,
+            })
+            .where(eq(systems.id, sys.id));
+        }
+      } else if (!sys.emulatorCore || !availableCores.some((c) => c.id === sys.emulatorCore)) {
         await database
           .update(systems)
           .set({
-            emulatable: defaults.emulatable,
-            emulatorCore: defaults.emulatorCore,
+            emulatable: sys.emulatorCore === null ? defaults.emulatable : Boolean(sys.emulatable),
+            emulatorCore: defaults.emulatorCore || availableCores[0].id,
+            esFolder: effectiveFolder,
           })
           .where(eq(systems.id, sys.id));
       }

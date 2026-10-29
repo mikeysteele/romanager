@@ -173,7 +173,11 @@ export class AppRoot extends LitElement {
           } else if (data.type === 'progress') {
             globalThis.dispatchEvent(new CustomEvent('scan-progress', { detail: data }));
           } else if (data.type === 'done') {
-            if (data.action === 'rom-deleted' || data.action === 'game-deleted') {
+            if (
+              data.action === 'rom-deleted' ||
+              data.action === 'game-deleted' ||
+              data.action === 'roms-updated'
+            ) {
               globalThis.dispatchEvent(new CustomEvent('roms-updated'));
             } else if (
               data.action === 'system-deleted' || 
@@ -187,7 +191,7 @@ export class AppRoot extends LitElement {
               globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
               globalThis.dispatchEvent(new CustomEvent('systems-updated'));
               globalThis.dispatchEvent(new CustomEvent('roms-updated'));
-            } else {
+            } else if (!data.action || data.action === 'scan-complete') {
               const count = typeof data.count === 'number' ? data.count : 0;
               const msg = count > 0 
                 ? `Scan complete! Discovered ${count} new file(s).` 
@@ -208,7 +212,6 @@ export class AppRoot extends LitElement {
       eventSource.onmessage = (event) => handleMessageData(event.data);
       if (typeof eventSource.addEventListener === 'function') {
         eventSource.addEventListener('update', (event: Event) => handleMessageData((event as MessageEvent).data));
-        eventSource.addEventListener('message', (event: Event) => handleMessageData((event as MessageEvent).data));
       }
 
       eventSource.onerror = () => {

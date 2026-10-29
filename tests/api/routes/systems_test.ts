@@ -165,9 +165,9 @@ test("POST / sets default browser emulation config and PATCH /:id updates emulat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             id: sysId,
-            name: "Super Nintendo Entertainment System",
-            slug: "snes-test-" + Date.now(),
-            esFolder: "snes",
+            name: "Nintendo Entertainment System",
+            slug: "nes-test-" + Date.now(),
+            esFolder: "nes",
         }),
     });
 
@@ -177,22 +177,78 @@ test("POST / sets default browser emulation config and PATCH /:id updates emulat
         const createData = await createRes.json();
         const created = SystemSchema.parse(createData.system);
         assertEquals(created.emulatable, true);
-        assertEquals(created.emulatorCore, "snes9x");
+        assertEquals(created.emulatorCore, "fceumm");
 
         const patchReq = new Request(`http://localhost/${created.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ emulatable: false, emulatorCore: "bsnes" }),
+            body: JSON.stringify({ emulatable: false, emulatorCore: "nestopia" }),
         });
         const patchRes = await systemsRouter.request(patchReq);
         assertEquals(patchRes.status, 200);
         const patched = SystemSchema.parse(await patchRes.json());
         assertEquals(patched.emulatable, false);
-        assertEquals(patched.emulatorCore, "bsnes");
+        assertEquals(patched.emulatorCore, "nestopia");
 
         await db.delete(systems).where(eq(systems.id, created.id));
     } finally {
         await db.delete(systems).where(eq(systems.id, sysId));
     }
 });
+
+test("PATCH /:id rejects enabling emulation when no Libretro WASM core exists for the platform", async () => {
+    const sysId = "test-sys-ps2-" + Date.now();
+    await db.insert(systems).values({
+        id: sysId,
+        name: "Sony PlayStation 2",
+        slug: "playstation-2-" + Date.now(),
+        esFolder: "ps2",
+        emulatable: false,
+        emulatorCore: null,
+    });
+
+    try {
+        const patchReq = new Request(`http://localhost/${sysId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emulatable: true }),
+        });
+        const patchRes = await systemsRouter.request(patchReq);
+        assertEquals(patchRes.status, 400);
+        const body = await patchRes.json();
+        assertEquals(typeof body.error, "string");
+        assertEquals(body.error.includes("No Libretro WASM core"), true);
+    } finally {
+        await db.delete(systems).where(eq(systems.id, sysId));
+    }
+});
+
+test("GET / returns systems in a stable alphabetical order after updates", async () => {
+    const idZ = "test-sys-order-z-" + Date.now();
+    const idA = "test-sys-order-a-" + Date.now();
+    await db.insert(systems).values([
+        { id: idZ, name: "Zeta Platform", slug: idZ, esFolder: "nes", emulatable: true, emulatorCore: "fceumm" },
+        { id: idA, name: "Alpha Platform", slug: idA, esFolder: "snes", emulatable: true, emulatorCore: "snes9x" },
+    ]);
+
+    try {
+        // Update Zeta Platform first so its row is modified
+        await systemsRouter.request(new Request(`http://localhost/${idZ}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emulatable: false }),
+        }));
+
+        const res = await systemsRouter.request(new Request("http://localhost/"));
+        assertEquals(res.status, 200);
+        const list = z.array(SystemReadSchema).parse(await res.json());
+        const idxA = list.findIndex((s) => s.id === idA);
+        const idxZ = list.findIndex((s) => s.id === idZ);
+        assertEquals(idxA !== -1 && idxZ !== -1 && idxA < idxZ, true);
+    } finally {
+        await db.delete(systems).where(eq(systems.id, idZ));
+        await db.delete(systems).where(eq(systems.id, idA));
+    }
+});
+
 

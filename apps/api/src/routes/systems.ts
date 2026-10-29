@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { getSystems, getSystemBySlug, getGamesBySystemSlug, findOrCreateSystem, deleteSystem } from "../db/queries.ts";
 import { eventBus } from "../sse.ts";
-import { SystemSchema } from "@repo/shared";
+import { SystemSchema, getCoresForPlatform, getDefaultEmulatorConfig } from "@repo/shared";
 import { db } from "../db/index.ts";
 import { systems } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
@@ -52,6 +52,9 @@ systemsRouter.post("/", async (c) => {
 systemsRouter.patch("/:id", async (c) => {
     const id = c.req.param("id");
     try {
+        const existing = await db.select().from(systems).where(eq(systems.id, id)).get();
+        if (!existing) return c.notFound();
+
         const body = await c.req.json();
         const updates: {
             esFolder?: string | null;
@@ -63,8 +66,41 @@ systemsRouter.patch("/:id", async (c) => {
         if ("esFolder" in body) updates.esFolder = body.esFolder;
         if ("name" in body) updates.name = body.name;
         if ("path" in body) updates.path = body.path;
-        if ("emulatable" in body) updates.emulatable = Boolean(body.emulatable);
-        if ("emulatorCore" in body) updates.emulatorCore = body.emulatorCore || null;
+
+        const nextName = updates.name ?? existing.name;
+        const nextEsFolder = updates.esFolder !== undefined ? updates.esFolder : existing.esFolder;
+        const nextPath = updates.path !== undefined ? updates.path : existing.path;
+        const availableCores = getCoresForPlatform(existing.slug || nextName, nextEsFolder || nextPath);
+        const defaults = getDefaultEmulatorConfig(existing.slug || nextName, nextEsFolder || nextPath);
+
+        if ("emulatable" in body) {
+            const wantEmulatable = Boolean(body.emulatable);
+            if (wantEmulatable && availableCores.length === 0) {
+                return c.json(
+                    { error: `No Libretro WASM core is available for platform "${nextName}"` },
+                    400
+                );
+            }
+            updates.emulatable = wantEmulatable;
+        }
+
+        if ("emulatorCore" in body) {
+            const requestedCore = body.emulatorCore || null;
+            if (requestedCore && !availableCores.some((core) => core.id === requestedCore)) {
+                return c.json(
+                    { error: `Core "${requestedCore}" is not supported for platform "${nextName}"` },
+                    400
+                );
+            }
+            updates.emulatorCore = requestedCore;
+        } else if (updates.emulatable === true && !existing.emulatorCore) {
+            updates.emulatorCore = defaults.emulatorCore || availableCores[0]?.id || null;
+        }
+
+        if (availableCores.length === 0) {
+            updates.emulatable = false;
+            updates.emulatorCore = null;
+        }
 
         await db.update(systems).set(updates).where(eq(systems.id, id));
         const updated = await db.select().from(systems).where(eq(systems.id, id)).get();

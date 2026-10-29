@@ -6,7 +6,7 @@ import { slugify } from "../utils.ts";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Tx = any;
 
-import { getDefaultEsFolder, getDefaultEmulatorConfig } from "../platform-mappings.ts";
+import { getDefaultEsFolder, getDefaultEmulatorConfig, getCoresForPlatform } from "../platform-mappings.ts";
 
 export interface SystemEmulationOverrides {
   emulatable?: boolean;
@@ -37,21 +37,35 @@ export async function findOrCreateSystem(
       updates.esFolder = folder;
       sys.esFolder = folder;
     }
-    if (overrides.emulatable !== undefined) {
-      updates.emulatable = overrides.emulatable;
-      sys.emulatable = overrides.emulatable;
-    }
-    if (overrides.emulatorCore !== undefined) {
-      updates.emulatorCore = overrides.emulatorCore;
-      sys.emulatorCore = overrides.emulatorCore;
-    } else if (sys.emulatorCore === null) {
-      const defaults = getDefaultEmulatorConfig(sys.slug || sys.name, folder);
-      if (defaults.emulatorCore) {
-        updates.emulatorCore = defaults.emulatorCore;
-        sys.emulatorCore = defaults.emulatorCore;
-        if (overrides.emulatable === undefined) {
-          updates.emulatable = defaults.emulatable;
-          sys.emulatable = defaults.emulatable;
+    const availableCores = getCoresForPlatform(sys.slug || sys.name, folder || sys.path);
+    const defaults = getDefaultEmulatorConfig(sys.slug || sys.name, folder || sys.path);
+
+    if (availableCores.length === 0) {
+      if (sys.emulatable || sys.emulatorCore !== null) {
+        updates.emulatable = false;
+        updates.emulatorCore = null;
+        sys.emulatable = false;
+        sys.emulatorCore = null;
+      }
+    } else {
+      if (overrides.emulatable !== undefined) {
+        updates.emulatable = overrides.emulatable;
+        sys.emulatable = overrides.emulatable;
+      }
+      if (overrides.emulatorCore !== undefined) {
+        const validCore = overrides.emulatorCore && availableCores.some((c) => c.id === overrides.emulatorCore)
+          ? overrides.emulatorCore
+          : defaults.emulatorCore || availableCores[0].id;
+        updates.emulatorCore = validCore;
+        sys.emulatorCore = validCore;
+      } else if (sys.emulatorCore === null) {
+        if (defaults.emulatorCore) {
+          updates.emulatorCore = defaults.emulatorCore;
+          sys.emulatorCore = defaults.emulatorCore;
+          if (overrides.emulatable === undefined) {
+            updates.emulatable = defaults.emulatable;
+            sys.emulatable = defaults.emulatable;
+          }
         }
       }
     }
@@ -63,9 +77,18 @@ export async function findOrCreateSystem(
   const slug = slugify(name);
   const id = crypto.randomUUID();
   const folder = esFolder || getDefaultEsFolder(slug);
-  const defaults = getDefaultEmulatorConfig(slug, folder);
-  const emulatable = overrides.emulatable !== undefined ? overrides.emulatable : defaults.emulatable;
-  const emulatorCore = overrides.emulatorCore !== undefined ? overrides.emulatorCore : defaults.emulatorCore;
+  const availableCores = getCoresForPlatform(slug || name, folder || path);
+  const defaults = getDefaultEmulatorConfig(slug || name, folder || path);
+  const hasCore = availableCores.length > 0;
+  const emulatable = hasCore
+    ? (overrides.emulatable !== undefined ? overrides.emulatable : defaults.emulatable)
+    : false;
+  const requestedCore = overrides.emulatorCore !== undefined ? overrides.emulatorCore : defaults.emulatorCore;
+  const emulatorCore = hasCore
+    ? (requestedCore && availableCores.some((c) => c.id === requestedCore)
+        ? requestedCore
+        : defaults.emulatorCore || availableCores[0].id)
+    : null;
   const result = await tx
     .insert(systems)
     .values({ id, name, slug, path, esFolder: folder, emulatable, emulatorCore })
@@ -191,11 +214,16 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
         });
 
         const platformRoms = matchingRawRoms.map(r => {
+            const availableCores = getCoresForPlatform(r.systemSlug || r.systemName || plat.slug, r.systemEsFolder);
             const fallback = getDefaultEmulatorConfig(r.systemSlug || r.systemName || plat.slug, r.systemEsFolder);
-            const emulatable = r.systemEmulatable !== null && r.systemEmulatable !== undefined
-                ? Boolean(r.systemEmulatable)
-                : fallback.emulatable;
-            const emulatorCore = r.systemEmulatorCore ?? fallback.emulatorCore;
+            const emulatable = availableCores.length > 0 && (
+                r.systemEmulatable !== null && r.systemEmulatable !== undefined
+                    ? Boolean(r.systemEmulatable)
+                    : fallback.emulatable
+            );
+            const emulatorCore = availableCores.length > 0
+                ? (r.systemEmulatorCore ?? fallback.emulatorCore)
+                : null;
             return {
                 ...r.rom,
                 emulatable,
@@ -205,9 +233,10 @@ async function enrichGameWithPlatformsAndRoms(game: typeof games.$inferSelect) {
         });
 
         const firstRom = platformRoms[0];
+        const platCores = getCoresForPlatform(plat.slug || plat.name, null);
         const platFallback = getDefaultEmulatorConfig(plat.slug || plat.name, null);
-        const platEmulatable = firstRom ? firstRom.emulatable : platFallback.emulatable;
-        const platCore = firstRom ? firstRom.emulatorCore : platFallback.emulatorCore;
+        const platEmulatable = firstRom ? firstRom.emulatable : (platCores.length > 0 && platFallback.emulatable);
+        const platCore = firstRom ? firstRom.emulatorCore : (platCores.length > 0 ? platFallback.emulatorCore : null);
 
         if (existing) {
             const seenRomIds = new Set(existing.roms.map(r => r.id));
@@ -276,7 +305,7 @@ export async function deleteGameFromDb(id: string) {
 }
 
 export async function getSystems() {
-  const allSystems = await db.select().from(systems);
+  const allSystems = await db.select().from(systems).orderBy(systems.name, systems.id);
   if (allSystems.length === 0) return [];
 
   // Get active ROM counts grouped by systemId
@@ -425,9 +454,10 @@ export async function getRomById(id: string) {
     }
 
     const files = await db.select().from(romFiles).where(eq(romFiles.romId, id));
-    const fallback = getDefaultEmulatorConfig(system?.slug || system?.name, system?.esFolder);
-    const emulatable = system ? Boolean(system.emulatable) : fallback.emulatable;
-    const emulatorCore = system?.emulatorCore || fallback.emulatorCore;
+    const availableCores = getCoresForPlatform(system?.slug || system?.name, system?.esFolder || system?.path);
+    const fallback = getDefaultEmulatorConfig(system?.slug || system?.name, system?.esFolder || system?.path);
+    const emulatable = availableCores.length > 0 && (system ? Boolean(system.emulatable) : fallback.emulatable);
+    const emulatorCore = availableCores.length > 0 ? (system?.emulatorCore || fallback.emulatorCore) : null;
 
     return { 
         ...rom, 
