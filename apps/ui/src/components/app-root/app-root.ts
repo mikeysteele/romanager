@@ -2,6 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { Router } from '@lit-labs/router';
 import { toast } from '@repo/ui-components';
+import { match, P } from 'ts-pattern';
 
 // Import components to ensure they are registered
 import '../app-library/app-library.ts';
@@ -153,6 +154,71 @@ export class AppRoot extends LitElement {
       }
   }
 
+  handleMessageData = (raw: string) => {
+    let data: unknown;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      console.error('Error parsing SSE event', e);
+      return;
+    }
+
+    match(data)
+      .with({ type: 'start' }, () => {
+        toast('Scanning library in background...', 'info', 3000);
+        globalThis.dispatchEvent(new CustomEvent('scan-started'));
+      })
+      .with({ type: 'progress' }, (payload) => {
+        globalThis.dispatchEvent(new CustomEvent('scan-progress', { detail: payload }));
+      })
+      .with(
+        { type: 'done', action: P.union('rom-deleted', 'game-deleted', 'roms-updated') },
+        () => {
+          globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        }
+      )
+      .with(
+        {
+          type: 'done',
+          action: P.union(
+            'system-deleted',
+            'system-created',
+            'platform-deleted',
+            'platform-created',
+            'platforms-updated',
+            'systems-updated',
+            'game-added'
+          ),
+        },
+        () => {
+          globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
+          globalThis.dispatchEvent(new CustomEvent('systems-updated'));
+          globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        }
+      )
+      .with(
+        {
+          type: 'done',
+          action: P.optional(P.union('scan-complete', P.nullish)),
+          count: P.optional(P.number),
+        },
+        ({ count = 0 }) => {
+          const msg =
+            count > 0
+              ? `Scan complete! Discovered ${count} new file(s).`
+              : 'Scan complete! Library is up to date.';
+          toast(msg, 'success', 5000);
+          globalThis.dispatchEvent(new CustomEvent('scan-done', { detail: { count } }));
+          globalThis.dispatchEvent(new CustomEvent('roms-updated'));
+        }
+      )
+      .with({ type: 'error', message: P.optional(P.string) }, (payload) => {
+        toast(`Scan failed: ${payload.message || 'Unknown error'}`, 'error', 6000);
+        globalThis.dispatchEvent(new CustomEvent('scan-error', { detail: payload }));
+      })
+      .otherwise(() => {});
+  };
+
   connectSSE() {
     if (this.eventSource && typeof this.eventSource.close === 'function') {
       this.eventSource.close();
@@ -164,54 +230,11 @@ export class AppRoot extends LitElement {
       const eventSource = new EventSource('/api/events');
       this.eventSource = eventSource;
 
-      const handleMessageData = (raw: string) => {
-        try {
-          const data = JSON.parse(raw);
-          if (data.type === 'start') {
-            toast('Scanning library in background...', 'info', 3000);
-            globalThis.dispatchEvent(new CustomEvent('scan-started'));
-          } else if (data.type === 'progress') {
-            globalThis.dispatchEvent(new CustomEvent('scan-progress', { detail: data }));
-          } else if (data.type === 'done') {
-            if (
-              data.action === 'rom-deleted' ||
-              data.action === 'game-deleted' ||
-              data.action === 'roms-updated'
-            ) {
-              globalThis.dispatchEvent(new CustomEvent('roms-updated'));
-            } else if (
-              data.action === 'system-deleted' || 
-              data.action === 'system-created' || 
-              data.action === 'platform-deleted' || 
-              data.action === 'platform-created' ||
-              data.action === 'platforms-updated' ||
-              data.action === 'systems-updated' ||
-              data.action === 'game-added'
-            ) {
-              globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
-              globalThis.dispatchEvent(new CustomEvent('systems-updated'));
-              globalThis.dispatchEvent(new CustomEvent('roms-updated'));
-            } else if (!data.action || data.action === 'scan-complete') {
-              const count = typeof data.count === 'number' ? data.count : 0;
-              const msg = count > 0 
-                ? `Scan complete! Discovered ${count} new file(s).` 
-                : 'Scan complete! Library is up to date.';
-              toast(msg, 'success', 5000);
-              globalThis.dispatchEvent(new CustomEvent('scan-done', { detail: { count } }));
-              globalThis.dispatchEvent(new CustomEvent('roms-updated'));
-            }
-          } else if (data.type === 'error') {
-            toast(`Scan failed: ${data.message || 'Unknown error'}`, 'error', 6000);
-            globalThis.dispatchEvent(new CustomEvent('scan-error', { detail: data }));
-          }
-        } catch (e) {
-          console.error('Error parsing SSE event', e);
-        }
-      };
-
-      eventSource.onmessage = (event) => handleMessageData(event.data);
+      eventSource.onmessage = (event) => this.handleMessageData(event.data);
       if (typeof eventSource.addEventListener === 'function') {
-        eventSource.addEventListener('update', (event: Event) => handleMessageData((event as MessageEvent).data));
+        eventSource.addEventListener('update', (event: Event) =>
+          this.handleMessageData((event as MessageEvent).data)
+        );
       }
 
       eventSource.onerror = () => {
