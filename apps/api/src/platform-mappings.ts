@@ -66,17 +66,28 @@ export const DEFAULT_RAWG_TO_ES_FOLDERS: Record<string, string> = {
 };
 
 export function getDefaultEsFolder(slugOrName: string): string | null {
-  const norm = slugOrName.toLowerCase().trim().replace(/[_\s]+/g, "-");
+  const norm = slugOrName
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "")
+    .replace(/(^-|-$)+/g, "");
+  if (!norm) return null;
+
   if (DEFAULT_RAWG_TO_ES_FOLDERS[norm]) {
     return DEFAULT_RAWG_TO_ES_FOLDERS[norm];
   }
-  for (const [key, folder] of Object.entries(DEFAULT_RAWG_TO_ES_FOLDERS)) {
-    if (norm === key || norm.includes(key)) {
-      return folder;
-    }
+
+  const stripped = norm.replace(
+    /^(?:nintendo|sony|sega|nec|snk|atari|bandai|mattel|coleco|commodore|sinclair|amstrad|panasonic|philips|fairchild|magnavox)-/,
+    ""
+  );
+  if (DEFAULT_RAWG_TO_ES_FOLDERS[stripped]) {
+    return DEFAULT_RAWG_TO_ES_FOLDERS[stripped];
   }
+
   return null;
 }
 
-export { getDefaultEmulatorConfig, LIBRETRO_WASM_CORES } from "@repo/shared";
+export { getDefaultEmulatorConfig, getCoresForPlatform, LIBRETRO_WASM_CORES } from "@repo/shared";
 

@@ -1,5 +1,5 @@
 import "./setup.ts";
-import { assertExists } from "@repo/tests/utils/assert";
+import { assertEquals, assertExists } from "@repo/tests/utils/assert";
 import "../../../apps/ui/src/components/app-root/app-root.ts";
 import type { AppRoot } from "../../../apps/ui/src/components/app-root/app-root.ts";
 
@@ -25,3 +25,33 @@ test("AppRoot: renders layout components", async () => {
 
     document.body.removeChild(el);
 });
+
+test("AppRoot: handleMessageData routes SSE actions without phantom scan-done events", () => {
+    const el = document.createElement("app-root") as AppRoot;
+    const events: string[] = [];
+    const onRomsUpdated = () => events.push("roms-updated");
+    const onScanDone = () => events.push("scan-done");
+    const onPlatformsUpdated = () => events.push("platforms-updated");
+
+    globalThis.addEventListener("roms-updated", onRomsUpdated);
+    globalThis.addEventListener("scan-done", onScanDone);
+    globalThis.addEventListener("platforms-updated", onPlatformsUpdated);
+
+    try {
+        el.handleMessageData(JSON.stringify({ type: "done", action: "roms-updated" }));
+        assertEquals(events, ["roms-updated"]);
+
+        events.length = 0;
+        el.handleMessageData(JSON.stringify({ type: "done", action: "game-added" }));
+        assertEquals(events, ["platforms-updated", "roms-updated"]);
+
+        events.length = 0;
+        el.handleMessageData(JSON.stringify({ type: "done", count: 3 }));
+        assertEquals(events, ["scan-done", "roms-updated"]);
+    } finally {
+        globalThis.removeEventListener("roms-updated", onRomsUpdated);
+        globalThis.removeEventListener("scan-done", onScanDone);
+        globalThis.removeEventListener("platforms-updated", onPlatformsUpdated);
+    }
+});
+

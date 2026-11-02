@@ -2,7 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { toast } from '@repo/ui-components';
 import '@repo/ui-components';
-import { fetchAndValidate, GameReadSchema, getDefaultEmulatorConfig, type GameRead, type Rom } from '@repo/shared';
+import { fetchAndValidate, GameReadSchema, getCoresForPlatform, getDefaultEmulatorConfig, type GameRead, type Rom } from '@repo/shared';
 import z from "zod";
 
 function formatBytes(bytes: number, decimals = 2) {
@@ -46,8 +46,10 @@ function renderFilesTable(game: GameRead | undefined | null, onDelete: (id: stri
             <h3 class="section-header">Files</h3>
             <ui-tabs>
                 ${uniquePlatforms.map(platform => {
+                    const availableCores = getCoresForPlatform(platform.slug || platform.name, platform.esFolder || platform.path);
+                    const hasCoreSupport = availableCores.length > 0;
                     const platDefaults = getDefaultEmulatorConfig(platform.slug || platform.name, platform.esFolder || platform.path);
-                    const platEmulatable = platform.emulatable !== undefined ? Boolean(platform.emulatable) : platDefaults.emulatable;
+                    const platEmulatable = hasCoreSupport && (platform.emulatable !== undefined ? Boolean(platform.emulatable) : platDefaults.emulatable);
                     return html`
                     <ui-tab-panel name="${platform.name}">
                         <table class="files-table">
@@ -63,7 +65,7 @@ function renderFilesTable(game: GameRead | undefined | null, onDelete: (id: stri
                             </thead>
                             <tbody>
                                 ${(platform.roms || []).map((rom: Rom) => {
-                                    const canEmulate = rom.emulatable !== undefined ? Boolean(rom.emulatable) : platEmulatable;
+                                    const canEmulate = hasCoreSupport && (rom.emulatable !== undefined ? Boolean(rom.emulatable) : platEmulatable);
                                     return html`
                                     <tr>
                                         <td class="filename">${rom.filename}</td>
@@ -75,6 +77,8 @@ function renderFilesTable(game: GameRead | undefined | null, onDelete: (id: stri
                                             <div style="display: flex; gap: var(--spacing-sm); justify-content: flex-end; align-items: center;">
                                                 ${canEmulate ? html`
                                                     <ui-button variant="primary" href="/play/${rom.id}">Play / Open</ui-button>
+                                                ` : !hasCoreSupport ? html`
+                                                    <ui-badge variant="secondary" title="No Libretro WASM core is available for ${platform.name}">No WASM Core Available</ui-badge>
                                                 ` : html`
                                                     <ui-badge variant="secondary" title="Enable browser emulation for ${platform.name} in Settings → Platforms & Firmware">Browser Emulation Off</ui-badge>
                                                 `}

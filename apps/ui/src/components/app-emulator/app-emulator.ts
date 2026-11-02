@@ -4,6 +4,7 @@ import { when } from 'lit/directives/when.js';
 import { Nostalgist } from 'nostalgist';
 import {
   LIBRETRO_WASM_CORES,
+  getCoresForPlatform,
   getDefaultEmulatorConfig,
   type Rom,
   type SystemFirmware,
@@ -363,28 +364,54 @@ export class AppEmulator extends LitElement {
     this.isPaused = false;
   }
 
+  private getAvailableCores(rom: RomWithSystem | null) {
+    if (!rom) return [];
+    const platSlug = rom.system?.slug || rom.platform;
+    const platFolder = rom.system?.esFolder || rom.system?.path;
+    const cores = getCoresForPlatform(platSlug, platFolder);
+    if (cores.length > 0) return cores;
+
+    if (!rom.system && (!platSlug || platSlug.toLowerCase() === 'unknown')) {
+      const fname = (rom.launchFile || rom.filename || '').toLowerCase();
+      const dotIdx = fname.lastIndexOf('.');
+      if (dotIdx !== -1) {
+        const ext = fname.slice(dotIdx);
+        const coreId = EXT_TO_CORE[ext];
+        if (coreId) {
+          return LIBRETRO_WASM_CORES.filter(c => c.id === coreId);
+        }
+      }
+    }
+    return [];
+  }
+
   private inferCoreForRom(rom: RomWithSystem | null): string {
-    if (!rom) return 'fceumm';
-    if (rom.emulatorCore) return rom.emulatorCore;
-    if (rom.system?.emulatorCore) return rom.system.emulatorCore;
+    if (!rom) return '';
+    const available = this.getAvailableCores(rom);
+    if (available.length === 0) return '';
+
+    if (rom.emulatorCore && available.some(c => c.id === rom.emulatorCore)) {
+      return rom.emulatorCore;
+    }
+    if (rom.system?.emulatorCore && available.some(c => c.id === rom.system!.emulatorCore)) {
+      return rom.system.emulatorCore;
+    }
 
     const defaults = getDefaultEmulatorConfig(
       rom.system?.slug || rom.platform,
       rom.system?.esFolder || rom.system?.path
     );
-    if (defaults.emulatorCore) return defaults.emulatorCore;
-
-    const fname = (rom.launchFile || rom.filename || '').toLowerCase();
-    const dotIdx = fname.lastIndexOf('.');
-    if (dotIdx !== -1) {
-      const ext = fname.slice(dotIdx);
-      if (EXT_TO_CORE[ext]) return EXT_TO_CORE[ext];
+    if (defaults.emulatorCore && available.some(c => c.id === defaults.emulatorCore)) {
+      return defaults.emulatorCore;
     }
-    return 'fceumm';
+
+    return available[0].id;
   }
 
   private isRomEmulatable(rom: RomWithSystem | null): boolean {
     if (!rom) return false;
+    const available = this.getAvailableCores(rom);
+    if (available.length === 0) return false;
     if (rom.emulatable !== undefined) return Boolean(rom.emulatable);
     if (rom.system?.emulatable !== undefined) return Boolean(rom.system.emulatable);
     const defaults = getDefaultEmulatorConfig(
@@ -635,6 +662,8 @@ export class AppEmulator extends LitElement {
   }
 
   override render() {
+    const availableCores = this.getAvailableCores(this.rom);
+    const hasCoreSupport = availableCores.length > 0;
     const canEmulate = this.isRomEmulatable(this.rom);
     const activeCore = this.selectedCore || this.inferCoreForRom(this.rom);
 
@@ -658,9 +687,12 @@ export class AppEmulator extends LitElement {
                 class="core-select"
                 title="Libretro WASM Core"
                 .value=${activeCore}
+                ?disabled=${!hasCoreSupport}
                 @change=${this.handleCoreChange}
               >
-                ${LIBRETRO_WASM_CORES.map(c => html`
+                ${!hasCoreSupport ? html`
+                  <option value="" selected>No WASM core available</option>
+                ` : availableCores.map(c => html`
                   <option value=${c.id} ?selected=${activeCore === c.id}>
                     Core: ${c.name} (${c.id})
                   </option>
@@ -705,7 +737,7 @@ export class AppEmulator extends LitElement {
           <div class="game-area">
             <div class="crt-monitor">
               <div class="crt-hud">
-                <span>CORE: ${activeCore.toUpperCase()} (${String(this.rom!.platform || 'GENERIC').toUpperCase()})</span>
+                <span>CORE: ${(activeCore || 'NONE').toUpperCase()} (${String(this.rom!.platform || 'GENERIC').toUpperCase()})</span>
                 <span>STATUS: ${this.emulatorStatus === 'running' ? (this.isPaused ? 'PAUSED' : 'RUNNING 60FPS') : this.emulatorStatus.toUpperCase()}</span>
               </div>
 
@@ -719,7 +751,7 @@ export class AppEmulator extends LitElement {
 
                     ${!canEmulate ? html`
                       <div class="error-box">
-                        Browser emulation is currently disabled for <strong>${this.rom!.platform}</strong>.
+                        Browser emulation is currently disabled for <strong>${this.rom!.platform}</strong>${!hasCoreSupport ? ' (no Libretro WASM core available)' : ''}.
                         <div style="margin-top: 10px;">
                           <a class="btn" href="/settings/platforms">Configure in Platforms &amp; Firmware</a>
                         </div>
