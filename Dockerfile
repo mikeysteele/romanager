@@ -1,5 +1,5 @@
-# Build stage for UI Single Page Application
-FROM node:22-bookworm-slim AS ui-builder
+# Build stage for UI Single Page Application and API Backend
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
 # Enable Corepack and prepare pnpm
@@ -10,16 +10,18 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json t
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui-components/package.json ./packages/ui-components/
 COPY apps/ui/package.json ./apps/ui/
+COPY apps/api/package.json ./apps/api/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy UI and package source files
+# Copy source files
 COPY packages ./packages
 COPY apps/ui ./apps/ui
+COPY apps/api ./apps/api
 
-# Build static UI bundle
-RUN pnpm run build:ui
+# Build static UI bundle and compiled API bundle
+RUN pnpm run build:ui && pnpm run build:api
 
 # Production runtime stage
 FROM node:22-bookworm-slim AS runner
@@ -32,21 +34,17 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN mkdir -p /data /roms && chown -R node:node /data /roms /app
 
 # Copy dependency manifests
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json tsconfig.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages/shared/package.json ./packages/shared/
-COPY packages/ui-components/package.json ./packages/ui-components/
 COPY apps/api/package.json ./apps/api/
 
-# Install runtime dependencies
-RUN pnpm install --frozen-lockfile
+# Install production runtime dependencies only (no tsx/vite/playwright/devDependencies)
+RUN pnpm install --prod --frozen-lockfile
 
-# Copy backend source code and migrations
-COPY packages ./packages
-COPY apps/api ./apps/api
+# Copy compiled backend, compiled frontend assets, and database migrations
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/ui/dist ./apps/ui/dist
 COPY drizzle ./drizzle
-
-# Copy compiled frontend assets from ui-builder
-COPY --from=ui-builder /app/apps/ui/dist ./apps/ui/dist
 
 # Ensure app files are owned by node user
 RUN chown -R node:node /app
@@ -55,7 +53,7 @@ RUN chown -R node:node /app
 ENV PORT=8000
 ENV DB_URL="file:/data/romanager.db"
 ENV ROMS_DIR="/roms"
-ENV APP_DIR="./apps/ui/dist"
+ENV APP_DIR="/app/apps/ui/dist"
 
 EXPOSE 8000
 
@@ -69,5 +67,5 @@ USER node
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e 'fetch("http://localhost:" + (process.env.PORT || 8000) + "/api/health").then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))'
 
-# Start server
-CMD ["pnpm", "start"]
+# Start compiled server directly with Node
+CMD ["node", "apps/api/dist/main.js"]

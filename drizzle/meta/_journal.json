@@ -57,6 +57,13 @@
       "when": 1791120582517,
       "tag": "0007_mushy_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793094752292,
+      "tag": "0008_cute_shocker",
+      "breakpoints": true
     }
   ]
 }

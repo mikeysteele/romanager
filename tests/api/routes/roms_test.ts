@@ -94,3 +94,57 @@ test("DELETE /:id should mark rom as pendingDelete", async () => {
     await db.delete(games).where(eq(games.id, gameId));
     await db.delete(systems).where(eq(systems.id, sysId));
 });
+
+test("GET /:id returns emulatable and emulatorCore metadata and GET /:id/file streams ROM bytes inside storage roots", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const timestamp = Date.now();
+    const sysId = "test-sys-emu-stream-" + timestamp;
+    const gameId = "test-game-emu-stream-" + timestamp;
+    const romId = "test-rom-emu-stream-" + timestamp;
+
+    const storageDir = path.resolve(process.cwd(), "storage");
+    await fs.mkdir(storageDir, { recursive: true });
+    const romFilePath = path.join(storageDir, `${romId}.nes`);
+    const sampleBytes = new Uint8Array([0x4e, 0x45, 0x53, 0x1a, 0x01, 0x02]);
+    await fs.writeFile(romFilePath, sampleBytes);
+
+    await db.insert(systems).values({
+        id: sysId,
+        name: "Nintendo Entertainment System",
+        slug: "nes-" + timestamp,
+        esFolder: "nes",
+        emulatable: true,
+        emulatorCore: "fceumm",
+    });
+    await db.insert(games).values({ id: gameId, name: "Stream Game", slug: gameId });
+    await db.insert(roms).values({
+        id: romId,
+        gameId,
+        systemId: sysId,
+        filename: `${romId}.nes`,
+        path: romFilePath,
+        size: sampleBytes.byteLength,
+        pendingDelete: false,
+    });
+
+    try {
+        const metaRes = await romsRouter.request(new Request(`http://localhost/${romId}`));
+        assertEquals(metaRes.status, 200);
+        const metaJson = RomSchema.parse(await metaRes.json());
+        assertEquals(metaJson.emulatable, true);
+        assertEquals(metaJson.emulatorCore, "fceumm");
+
+        const fileRes = await romsRouter.request(new Request(`http://localhost/${romId}/file`));
+        assertEquals(fileRes.status, 200);
+        const buf = new Uint8Array(await fileRes.arrayBuffer());
+        assertEquals(buf.byteLength, sampleBytes.byteLength);
+        assertEquals(buf[0], 0x4e);
+    } finally {
+        await fs.rm(romFilePath, { force: true });
+        await db.delete(roms).where(eq(roms.id, romId));
+        await db.delete(games).where(eq(games.id, gameId));
+        await db.delete(systems).where(eq(systems.id, sysId));
+    }
+});
+

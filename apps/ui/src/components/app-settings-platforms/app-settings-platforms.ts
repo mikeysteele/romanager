@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { toast } from '@repo/ui-components';
 import '@repo/ui-components';
-import { PlatformRead } from '@repo/shared';
+import { PlatformRead, getCoresForPlatform, getDefaultEmulatorConfig } from '@repo/shared';
 
 @customElement('app-settings-platforms')
 export class AppSettingsPlatforms extends LitElement {
@@ -33,14 +33,72 @@ export class AppSettingsPlatforms extends LitElement {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
     }
     .platform-title {
         font-weight: var(--font-weight-bold);
         font-size: var(--font-size-lg);
         color: var(--color-accent-primary);
     }
+    .emulation-section {
+        margin-top: var(--spacing-sm);
+        padding-top: var(--spacing-md);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--spacing-md);
+    }
+    .emulation-toggle-label {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        cursor: pointer;
+        user-select: none;
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--color-text-primary);
+    }
+    .emulation-toggle-label.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .emulation-toggle-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: var(--color-accent-primary, #f5c518);
+    }
+    .emulation-toggle-label input[type="checkbox"]:disabled {
+        cursor: not-allowed;
+    }
+    .core-selector-group {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
+    }
+    .core-selector-group label {
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+    }
+    .core-select {
+        padding: 6px 10px;
+        border: 1px solid var(--border-color);
+        background: var(--color-bg-tertiary);
+        color: var(--color-text-primary);
+        border-radius: var(--border-radius-sm);
+        font-size: var(--font-size-sm);
+        min-width: 240px;
+    }
+    .core-select:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
     .firmware-section {
-        margin-top: var(--spacing-md);
+        margin-top: var(--spacing-sm);
         padding-top: var(--spacing-md);
         border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
@@ -71,7 +129,7 @@ export class AppSettingsPlatforms extends LitElement {
 
   @state() platforms: PlatformRead[] = [];
   get systems() { return this.platforms; }
-  set systems(val: PlatformRead[]) { this.platforms = val; }
+  set systems(val: PlatformRead[]) { this.platforms = this.sortPlatforms(val); }
 
   @state() unmappedFiles: Array<{ id: string; path: string; filename: string; size: number }> = [];
   @state() loading: boolean = false;
@@ -81,6 +139,13 @@ export class AppSettingsPlatforms extends LitElement {
   @state() isAddPlatformDialogOpen: boolean = false;
   @state() newPlatformName: string = '';
   @state() newPlatformPath: string = '';
+  @state() newPlatformEmulatable: boolean = false;
+  @state() newPlatformCore: string = '';
+  @state() newPlatformEmulatableTouched: boolean = false;
+
+  private sortPlatforms(list: PlatformRead[]): PlatformRead[] {
+      return [...list].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  }
 
   override connectedCallback() {
       super.connectedCallback();
@@ -101,6 +166,34 @@ export class AppSettingsPlatforms extends LitElement {
   handlePlatformsUpdated = () => {
       this.fetchPlatforms();
   };
+
+  async updatePlatformEmulation(
+      platform: PlatformRead,
+      updates: { emulatable?: boolean; emulatorCore?: string | null }
+  ) {
+      try {
+          const res = await fetch(`/api/platforms/${platform.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(updates)
+          });
+          if (res.ok) {
+              const updated = await res.json();
+              this.platforms = this.sortPlatforms(
+                  this.platforms.map(p => (p.id === platform.id ? { ...p, ...updated } : p))
+              );
+              toast(`Updated browser emulation for "${platform.name}"`, 'success');
+              globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
+          } else {
+              const body = await res.json().catch(() => ({}));
+              toast(body.error || 'Failed to update platform emulation settings', 'error');
+              await this.fetchPlatforms();
+          }
+      } catch (e) {
+          console.error('Failed to update platform emulation settings', e);
+          toast('Failed to update platform emulation settings', 'error');
+      }
+  }
 
   async removePlatform(platformId: string, platformName: string) {
       if (!confirm(`Are you sure you want to remove the platform "${platformName}"? This action cannot be undone.`)) return;
@@ -139,16 +232,22 @@ export class AppSettingsPlatforms extends LitElement {
   }
 
   async fetchPlatforms() {
+    const showLoadingSpinner = this.platforms.length === 0;
     try {
-      this.loading = true;
+      if (showLoadingSpinner) {
+        this.loading = true;
+      }
       const res = await fetch('/api/platforms');
       if (res.ok) {
-        this.platforms = await res.json();
+        const data: PlatformRead[] = await res.json();
+        this.platforms = this.sortPlatforms(data);
       }
     } catch (e) {
       console.error('Error fetching platforms', e);
     } finally {
-      this.loading = false;
+      if (showLoadingSpinner) {
+        this.loading = false;
+      }
     }
   }
 
@@ -218,6 +317,33 @@ export class AppSettingsPlatforms extends LitElement {
       }
   }
 
+  private syncNewPlatformDefaults(name: string, path: string) {
+      const availableCores = getCoresForPlatform(name, path || null);
+      if (availableCores.length === 0) {
+          this.newPlatformEmulatable = false;
+          this.newPlatformCore = '';
+          return;
+      }
+      if (!this.newPlatformEmulatableTouched) {
+          const defaults = getDefaultEmulatorConfig(name, path || null);
+          this.newPlatformEmulatable = defaults.emulatable;
+          this.newPlatformCore = defaults.emulatorCore || availableCores[0].id;
+      } else if (this.newPlatformCore && !availableCores.some(c => c.id === this.newPlatformCore)) {
+          const defaults = getDefaultEmulatorConfig(name, path || null);
+          this.newPlatformCore = defaults.emulatorCore || availableCores[0].id;
+      }
+  }
+
+  handleNewPlatformNameInput(value: string) {
+      this.newPlatformName = value;
+      this.syncNewPlatformDefaults(value, this.newPlatformPath);
+  }
+
+  handleNewPlatformPathInput(value: string) {
+      this.newPlatformPath = value;
+      this.syncNewPlatformDefaults(this.newPlatformName, value);
+  }
+
   async handleAddPlatform(e: Event) {
       e.preventDefault();
       if (!this.newPlatformName.trim() || this.loading) return;
@@ -227,11 +353,26 @@ export class AppSettingsPlatforms extends LitElement {
           const platformId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
               ? crypto.randomUUID()
               : 'plat-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
+          const slug = this.newPlatformName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+          const availableCores = getCoresForPlatform(slug || this.newPlatformName.trim(), this.newPlatformPath.trim() || null);
+          const defaults = getDefaultEmulatorConfig(slug || this.newPlatformName.trim(), this.newPlatformPath.trim() || null);
+          const hasCoreSupport = availableCores.length > 0;
+          const emulatable = hasCoreSupport
+              ? (this.newPlatformEmulatableTouched ? this.newPlatformEmulatable : defaults.emulatable)
+              : false;
+          const emulatorCore = hasCoreSupport
+              ? (this.newPlatformEmulatableTouched
+                  ? (this.newPlatformCore || defaults.emulatorCore || availableCores[0].id)
+                  : (defaults.emulatorCore || availableCores[0].id))
+              : null;
+
           const payload = {
               id: platformId,
               name: this.newPlatformName.trim(),
-              slug: this.newPlatformName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
-              path: this.newPlatformPath.trim() || null
+              slug,
+              path: this.newPlatformPath.trim() || null,
+              emulatable,
+              emulatorCore,
           };
 
           const res = await fetch('/api/platforms', {
@@ -241,9 +382,7 @@ export class AppSettingsPlatforms extends LitElement {
           });
 
           if (res.ok) {
-              this.isAddPlatformDialogOpen = false;
-              this.newPlatformName = '';
-              this.newPlatformPath = '';
+              this.closeAddPlatformDialog();
               toast('Platform added', 'success');
               await this.fetchPlatforms();
               globalThis.dispatchEvent(new CustomEvent('platforms-updated'));
@@ -277,6 +416,9 @@ export class AppSettingsPlatforms extends LitElement {
       this.isAddPlatformDialogOpen = false;
       this.newPlatformName = '';
       this.newPlatformPath = '';
+      this.newPlatformEmulatable = false;
+      this.newPlatformCore = '';
+      this.newPlatformEmulatableTouched = false;
   }
 
   closeAddSystemDialog() {
@@ -296,6 +438,11 @@ export class AppSettingsPlatforms extends LitElement {
   _renderPlatform(platform: PlatformRead) {
       const romCount = platform.romCount ?? 0;
       const canDelete = romCount === 0;
+      const availableCores = getCoresForPlatform(platform.slug || platform.name, platform.esFolder || platform.path);
+      const hasCoreSupport = availableCores.length > 0;
+      const defaults = getDefaultEmulatorConfig(platform.slug || platform.name, platform.esFolder || platform.path);
+      const isEmulatable = hasCoreSupport && (platform.emulatable !== undefined ? Boolean(platform.emulatable) : defaults.emulatable);
+      const selectedCore = hasCoreSupport ? (platform.emulatorCore ?? defaults.emulatorCore ?? '') : '';
 
       return html`
         <div class="platform-card">
@@ -308,12 +455,72 @@ export class AppSettingsPlatforms extends LitElement {
                     ` : html`
                         <ui-badge variant="accent">🔒 ${romCount} ${romCount === 1 ? 'ROM' : 'ROMs'}</ui-badge>
                     `}
+                    ${!hasCoreSupport ? html`
+                        <ui-badge variant="secondary">No WASM Core Available</ui-badge>
+                    ` : isEmulatable ? html`
+                        <ui-badge variant="accent">▶ Browser: ${selectedCore || 'Auto'}</ui-badge>
+                    ` : html`
+                        <ui-badge variant="secondary">Browser Emulation Off</ui-badge>
+                    `}
                 </div>
                 ${canDelete ? html`
                     <ui-button variant="error" size="sm" @click=${() => this.removePlatform(platform.id, platform.name)}>
                         Remove Platform
                     </ui-button>
                 ` : ''}
+            </div>
+
+            <div class="emulation-section">
+                <label
+                    class="emulation-toggle-label ${!hasCoreSupport ? 'disabled' : ''}"
+                    title=${!hasCoreSupport ? 'No compatible Libretro WASM core is available for this platform' : ''}
+                >
+                    <input
+                        type="checkbox"
+                        .checked=${isEmulatable}
+                        ?disabled=${!hasCoreSupport}
+                        @change=${(e: Event) => {
+                            if (!hasCoreSupport) return;
+                            const checked = (e.target as HTMLInputElement).checked;
+                            const nextCore = checked && !platform.emulatorCore
+                                ? (defaults.emulatorCore || availableCores[0]?.id || null)
+                                : (platform.emulatorCore ?? defaults.emulatorCore ?? availableCores[0]?.id ?? null);
+                            this.updatePlatformEmulation(platform, {
+                                emulatable: checked,
+                                emulatorCore: nextCore,
+                            });
+                        }}
+                    />
+                    Emulate in Browser (WASM Libretro)
+                </label>
+
+                <div class="core-selector-group">
+                    <label>Libretro Core:</label>
+                    <select
+                        class="core-select"
+                        .value=${selectedCore}
+                        ?disabled=${!hasCoreSupport || !isEmulatable}
+                        @change=${(e: Event) => {
+                            if (!hasCoreSupport) return;
+                            const val = (e.target as HTMLSelectElement).value || null;
+                            this.updatePlatformEmulation(platform, {
+                                emulatable: isEmulatable,
+                                emulatorCore: val,
+                            });
+                        }}
+                    >
+                        ${!hasCoreSupport ? html`
+                            <option value="" selected>No WASM core available</option>
+                        ` : html`
+                            <option value="" ?selected=${!selectedCore}>Auto-detect core</option>
+                            ${map(availableCores, core => html`
+                                <option value=${core.id} title=${core.systems} ?selected=${selectedCore === core.id}>
+                                    ${core.name} (${core.id})
+                                </option>
+                            `)}
+                        `}
+                    </select>
+                </div>
             </div>
             
             <div class="firmware-section">
@@ -348,10 +555,13 @@ export class AppSettingsPlatforms extends LitElement {
   }
 
   override render() {
+    const newPlatformCores = getCoresForPlatform(this.newPlatformName, this.newPlatformPath || null);
+    const canEmulateNewPlatform = newPlatformCores.length > 0;
+
     return html`
         <ui-page-header
             heading="Platforms & Firmware"
-            subtitle="Configure supported emulation platforms, manage core paths, and map required BIOS files."
+            subtitle="Configure supported emulation platforms, browser WASM cores, and required BIOS files."
             .breadcrumbs=${[
                 { label: 'Settings', href: '/settings' },
                 { label: 'Platforms & Firmware' }
@@ -409,7 +619,7 @@ export class AppSettingsPlatforms extends LitElement {
                     <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: bold; color: var(--color-text-secondary);">Platform Name required</label>
                     <input type="text" 
                         .value=${this.newPlatformName} 
-                        @input=${(e: Event) => this.newPlatformName = (e.target as HTMLInputElement).value}
+                        @input=${(e: Event) => this.handleNewPlatformNameInput((e.target as HTMLInputElement).value)}
                         placeholder="e.g. PlayStation 2"
                         required
                         style="width: 100%; padding: var(--spacing-sm); border: 1px solid var(--border-color); background: var(--color-bg-tertiary); color: var(--color-text-primary); border-radius: var(--border-radius-sm);" />
@@ -419,11 +629,54 @@ export class AppSettingsPlatforms extends LitElement {
                     <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: bold; color: var(--color-text-secondary);">Core Path optional</label>
                     <input type="text" 
                         .value=${this.newPlatformPath} 
-                        @input=${(e: Event) => this.newPlatformPath = (e.target as HTMLInputElement).value}
+                        @input=${(e: Event) => this.handleNewPlatformPathInput((e.target as HTMLInputElement).value)}
                         placeholder="e.g. ps2"
                         style="width: 100%; padding: var(--spacing-sm); border: 1px solid var(--border-color); background: var(--color-bg-tertiary); color: var(--color-text-primary); border-radius: var(--border-radius-sm);" />
                     <div style="font-size: 0.8em; color: var(--color-text-secondary); margin-top: 4px;">Path fragment targeting EmulationStation mappings.</div>
                 </div>
+
+                <div style="margin-bottom: var(--spacing-md);">
+                    <label class="emulation-toggle-label ${!canEmulateNewPlatform ? 'disabled' : ''}">
+                        <input
+                            type="checkbox"
+                            .checked=${canEmulateNewPlatform && this.newPlatformEmulatable}
+                            ?disabled=${!canEmulateNewPlatform}
+                            @change=${(e: Event) => {
+                                if (!canEmulateNewPlatform) return;
+                                this.newPlatformEmulatableTouched = true;
+                                this.newPlatformEmulatable = (e.target as HTMLInputElement).checked;
+                            }}
+                        />
+                        Allow Emulation in Browser (WASM Libretro)
+                    </label>
+                    ${this.newPlatformName.trim() && !canEmulateNewPlatform ? html`
+                        <div style="font-size: 0.8em; color: var(--color-text-secondary); margin-top: 4px;">
+                            No Libretro WASM core is available for this platform.
+                        </div>
+                    ` : ''}
+                </div>
+
+                ${canEmulateNewPlatform && this.newPlatformEmulatable ? html`
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: bold; color: var(--color-text-secondary);">Libretro WASM Core</label>
+                        <select
+                            class="core-select"
+                            style="width: 100%;"
+                            .value=${this.newPlatformCore}
+                            @change=${(e: Event) => {
+                                this.newPlatformEmulatableTouched = true;
+                                this.newPlatformCore = (e.target as HTMLSelectElement).value;
+                            }}
+                        >
+                            <option value="">Auto-detect core</option>
+                            ${map(newPlatformCores, core => html`
+                                <option value=${core.id} ?selected=${this.newPlatformCore === core.id}>
+                                    ${core.name} (${core.id})
+                                </option>
+                            `)}
+                        </select>
+                    </div>
+                ` : ''}
             </form>
             
             <div slot="actions">

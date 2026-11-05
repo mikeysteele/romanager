@@ -16,7 +16,7 @@
   "devDependencies": {
     "@types/node": "^22.10.2",
     "postject": "^1.0.0-alpha.6",
-    "rolldown": "^1.2.13",
+    "rolldown": "^1.2.15",
     "tsx": "^4.19.2",
     "typescript": "^7.0.2"
   }

@@ -3,13 +3,46 @@ import { db } from "../db/index.ts";
 import { systemFirmware, scannedFiles } from "../db/schema.ts";
 import { SystemFirmwareSchema } from "@repo/shared";
 import { eq } from "drizzle-orm";
-import { assertWithinRoots, getAllowedStorageRoots, PathPolicyViolation } from "../path-policy.ts";
+import { assertWithinRoots, getAllowedStorageRoots, isWithinRoots, PathPolicyViolation } from "../path-policy.ts";
+import { stat } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
+import { basename } from "node:path";
 
 export const firmwareRouter = new Hono();
 
 firmwareRouter.get("/", async (c) => {
     const list = await db.select().from(systemFirmware);
     return c.json(list);
+});
+
+firmwareRouter.get("/:id/file", async (c) => {
+    const id = c.req.param("id");
+    const fw = await db.select().from(systemFirmware).where(eq(systemFirmware.id, id)).get();
+    if (!fw) return c.notFound();
+
+    const allowedRoots = await getAllowedStorageRoots();
+    if (!isWithinRoots(allowedRoots, fw.path)) {
+        return c.json({ error: "Access to requested firmware path is forbidden" }, 403);
+    }
+
+    let fileStat;
+    try {
+        fileStat = await stat(fw.path);
+    } catch {
+        return c.json({ error: "Firmware file not found on server disk" }, 404);
+    }
+
+    const stream = createReadStream(fw.path);
+    const safeFilename = basename(fw.filename || fw.path).replace(/["\r\n]/g, "");
+    return new Response(Readable.toWeb(stream) as ReadableStream, {
+        status: 200,
+        headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": fileStat.size.toString(),
+            "Content-Disposition": `attachment; filename="${safeFilename}"`,
+        },
+    });
 });
 
 firmwareRouter.post("/", async (c) => {

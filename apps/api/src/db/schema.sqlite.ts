@@ -8,6 +8,8 @@ export const systems = sqliteTable("systems", {
   slug: text("slug").notNull().unique(),
   path: text("path"),
   esFolder: text("es_folder"),
+  emulatable: integer("emulatable", { mode: "boolean" }).notNull().default(false),
+  emulatorCore: text("emulator_core"),
 });
 export const insertSystemSchema = createInsertSchema(systems);
 export const selectSystemSchema = createSelectSchema(systems);
