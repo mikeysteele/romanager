@@ -89,7 +89,7 @@ export async function runDoctor(options: DoctorOptions): Promise<void> {
     for (const [key, dirPath] of Object.entries(config.paths)) {
       try {
         const s = await stat(dirPath);
-        const isDir = typeof s.isDirectory === "function" ? s.isDirectory() : Boolean((s as any).isDirectory);
+        const isDir = s.isDirectory();
         if (!isDir) {
           checks.push({
             name: `Path (${key})`,

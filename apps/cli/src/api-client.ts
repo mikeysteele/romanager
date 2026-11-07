@@ -173,10 +173,11 @@ export class ApiClient {
             const { done, value } = await reader.read();
             if (done) break;
             if (value) {
-              await fileHandle.write(value);
-              hasher.update(value);
+              const chunk: Uint8Array = value;
+              await fileHandle.appendFile(chunk);
+              hasher.update(chunk);
               if (onProgress) {
-                onProgress(value.length);
+                onProgress(chunk.length);
               }
             }
           }

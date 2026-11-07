@@ -1,4 +1,4 @@
-import { CliConfig, loadConfig, saveConfig } from "../config.ts";
+import { type CliConfig, loadConfig, saveConfig } from "../config.ts";
 type Primitive = string | number | boolean | bigint | symbol | null | undefined;
 
 /**

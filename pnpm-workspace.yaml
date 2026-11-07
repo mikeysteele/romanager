@@ -6,6 +6,7 @@ packages:
 allowBuilds:
   esbuild: true
   lefthook: true
+  scriptc: true
 
 minimumReleaseAgeExclude:
   - '@oxlint/binding-android-arm-eabi@1.88.0'
@@ -32,3 +33,4 @@ minimumReleaseAgeExclude:
 onlyBuiltDependencies:
   - esbuild
   - lefthook
+  - scriptc

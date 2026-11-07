@@ -101,7 +101,7 @@ export async function createSyncPlan(
         const fullPath = resolve(rootDir, f.path);
         try {
           const s = await stat(fullPath);
-          const isFileOrDir = typeof s.isFile === "function" ? (s.isFile() || s.isDirectory()) : Boolean((s as any).isFile || (s as any).isDirectory);
+          const isFileOrDir = s.isFile() || s.isDirectory();
           if (isFileOrDir) {
             existingPaths.push(f.path);
           }

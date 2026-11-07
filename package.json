@@ -13,7 +13,7 @@
     "build": "pnpm --recursive run build",
     "build:api": "pnpm --filter @romanager/api build",
     "build:ui": "pnpm --filter @romanager/ui build",
-    "build:cli": "pnpm --filter @repo/cli build:sea",
+    "build:cli": "pnpm --filter @repo/cli build",
     "test": "vitest run",
     "test:api": "vitest run tests/api",
     "test:unit": "vitest run tests/unit",

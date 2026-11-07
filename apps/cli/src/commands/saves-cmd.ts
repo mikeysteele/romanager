@@ -1,5 +1,6 @@
 import { dirname, resolve, relative } from "node:path";
-import { mkdir, readdir, stat, readFile, writeFile, copyFile } from "node:fs/promises";
+import { mkdir, readdir, stat, readFile, copyFile } from "node:fs/promises";
+import { writeFileSync } from "node:fs";
 import { loadConfig } from "../config.ts";
 import { loadState, saveState, getStatePath } from "../state.ts";
 import { calculateFileSha1 } from "../hasher.ts";
@@ -186,7 +187,7 @@ export async function runSaves(options: SavesCommandOptions): Promise<void> {
 
     await mkdir(dirname(localPath), { recursive: true });
     const data = await res.arrayBuffer();
-    await writeFile(localPath, new Uint8Array(data));
+    writeFileSync(localPath, new Uint8Array(data));
 
     const sha1 = res.headers.get("x-sha1") || "";
     state.saves[relPath] = {
