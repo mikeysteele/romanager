@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.1](https://github.com/mikeysteele/romanager/compare/romanager-v1.1.0...romanager-v1.1.1) (2026-11-11)
+
+
+### Continuous Integration
+
+* **release:** consolidate docker publishing and cli release assets into release-please ([#51](https://github.com/mikeysteele/romanager/issues/51)) ([b367be0](https://github.com/mikeysteele/romanager/commit/b367be025f303e2211f8df231317c92409046abf))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump lefthook from 1.13.6 to 2.2.2 ([#23](https://github.com/mikeysteele/romanager/issues/23)) ([bcc247d](https://github.com/mikeysteele/romanager/commit/bcc247d9b3b47ef5f36d8c8833780abaa4640a27))
+
 ## [1.1.0](https://github.com/mikeysteele/romanager/compare/romanager-v1.0.0...romanager-v1.1.0) (2026-11-11)
 
 
