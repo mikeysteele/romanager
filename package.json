@@ -40,7 +40,7 @@
     "lefthook": "^2.2.2",
     "lint-staged": "^17.6.0",
     "oxlint": "^1.88.0",
-    "oxlint-tsgolint": "^7.0.2005",
+    "oxlint-tsgolint": "^7.0.2006",
     "playwright-bdd": "^9.2.1",
     "postject": "1.0.0-alpha.6",
     "rolldown": "^1.2.15",
