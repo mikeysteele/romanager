@@ -16,7 +16,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.5",
+    "@hono/node-server": "^2.1.6",
     "@jsr/smallweb__webdav": "^0.0.1",
     "@libsql/client": "^0.18.0",
     "@repo/shared": "workspace:*",
