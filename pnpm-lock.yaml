@@ -73,7 +73,7 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^2.1.5
-        version: 2.1.5(hono@4.13.14)
+        version: 2.1.5(hono@4.13.17)
       '@jsr/smallweb__webdav':
         specifier: ^0.0.1
         version: 0.0.1
@@ -93,8 +93,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1(drizzle-orm@0.45.4(@libsql/client@0.18.0)(gel@2.2.1)(postgres@3.4.9))(zod@3.25.76)
       hono:
-        specifier: ^4.13.14
-        version: 4.13.14
+        specifier: ^4.13.17
+        version: 4.13.17
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
@@ -1801,8 +1801,8 @@ packages:
     resolution: {integrity: sha512-1pgFdhK3J2LeM+dVf2Pd424yHx2ou338lC0ErNP2hPx4j8eW1Sp0XqSjNxtk6Tc4Kr5wlWtSvz8cn2yb7/SG/w==}
     engines: {node: '>=20'}
 
-  hono@4.13.14:
-    resolution: {integrity: sha512-yhRLQ21U6qa9Hsu2N7Qcbh8tE+WKEcoErjIo56LeSGiGXGp9sA7UpE86Ui9uexb61KakiGwuHMn2QdV7w6i6kQ==}
+  hono@4.13.17:
+    resolution: {integrity: sha512-vZIcbkvjOR5hHRWERbGkr8fGfF0GGM1ooYkuH448iO3b2AdVEr3AXZSw4Z3Kn+1L5z0CVoVeyV29VGYmFh05kQ==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@7.0.0:
@@ -2174,6 +2174,11 @@ packages:
 
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.8.6:
+    resolution: {integrity: sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -2899,9 +2904,9 @@ snapshots:
 
   '@exodus/bytes@1.16.0': {}
 
-  '@hono/node-server@2.1.5(hono@4.13.14)':
+  '@hono/node-server@2.1.5(hono@4.13.17)':
     dependencies:
-      hono: 4.13.14
+      hono: 4.13.17
 
   '@jridgewell/resolve-uri@3.1.2': {}
 
@@ -2920,7 +2925,7 @@ snapshots:
       '@jsr/std__http': 1.1.4
       '@jsr/std__media-types': 1.1.0
       '@jsr/std__path': 1.1.6
-      hono: 4.13.14
+      hono: 4.13.17
 
   '@jsr/std__bytes@1.0.6': {}
 
@@ -3549,7 +3554,7 @@ snapshots:
       '@petamoriken/float16': 3.9.3
       debug: 4.4.3
       env-paths: 3.0.0
-      semver: 7.8.5
+      semver: 7.8.6
       shell-quote: 1.12.0
       which: 4.0.0
     transitivePeerDependencies:
@@ -3568,7 +3573,7 @@ snapshots:
     dependencies:
       ini: 6.0.0
 
-  hono@4.13.14: {}
+  hono@4.13.17: {}
 
   html-encoding-sniffer@7.0.0:
     dependencies:
@@ -3937,6 +3942,9 @@ snapshots:
       xmlchars: 2.2.0
 
   semver@7.8.5: {}
+
+  semver@7.8.6:
+    optional: true
 
   shell-quote@1.12.0:
     optional: true
