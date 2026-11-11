@@ -504,15 +504,21 @@ export class AppEmulator extends LitElement {
       const firmwareList = this.rom.firmware || this.rom.system?.firmware || [];
       const biosInputs: Array<{ fileName: string; fileContent: Blob }> = [];
       for (const fw of firmwareList) {
-        this.statusMessage = `Loading BIOS ${fw.filename}...`;
-        const fwRes = await fetch(`/api/firmware/${fw.id}/file`, {
-          signal: abortController.signal,
-        });
-        if (fwRes.ok) {
-          biosInputs.push({
-            fileName: fw.filename,
-            fileContent: await fwRes.blob(),
+        const fileItems = (fw.files && fw.files.length > 0)
+          ? fw.files
+          : [{ id: fw.id, filename: fw.filename }];
+
+        for (const item of fileItems) {
+          this.statusMessage = `Loading BIOS ${item.filename}...`;
+          const fwRes = await fetch(`/api/firmware/${item.id}/file`, {
+            signal: abortController.signal,
           });
+          if (fwRes.ok) {
+            biosInputs.push({
+              fileName: item.filename,
+              fileContent: await fwRes.blob(),
+            });
+          }
         }
       }
 

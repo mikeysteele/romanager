@@ -265,17 +265,34 @@ export const PlatformSchema = z.object({
 });
 export type Platform = z.infer<typeof PlatformSchema>;
 
+export const SystemFirmwareFileSchema = z.object({
+  id: z.string(),
+  firmwareId: z.string().optional(),
+  relPath: z.string(),
+  path: z.string(),
+  filename: z.string(),
+  size: z.number(),
+  sha1: z.string().optional().nullable(),
+  md5: z.string().optional().nullable(),
+  crc32: z.string().optional().nullable(),
+  createdAt: z.string().optional(),
+});
+export type SystemFirmwareFile = z.infer<typeof SystemFirmwareFileSchema>;
+
 export const SystemFirmwareSchema = z.object({
   id: z.string(),
   systemId: z.string(),
+  name: z.string().optional().nullable(),
   filename: z.string(),
   description: z.string().optional().nullable(),
-  path: z.string(),
+  path: z.string().optional().nullable(),
+  totalSize: z.number().optional().nullable(),
   md5: z.string().optional().nullable(),
   crc32: z.string().optional().nullable(),
   sha1: z.string().optional().nullable(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  files: z.array(SystemFirmwareFileSchema).optional(),
 });
 export type SystemFirmware = z.infer<typeof SystemFirmwareSchema>;
 
