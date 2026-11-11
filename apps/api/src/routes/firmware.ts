@@ -2,14 +2,14 @@ import { Hono } from "hono";
 import { db } from "../db/index.ts";
 import { systemFirmware, systemFirmwareFiles, scannedFiles, systems } from "../db/schema.ts";
 import { SystemFirmwareSchema } from "@repo/shared";
-import { eq, or, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { assertWithinRoots, getAllowedStorageRoots, getBiosDir, isWithinRoots, PathPolicyViolation } from "../path-policy.ts";
 import { stat, mkdir, writeFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import path, { basename } from "node:path";
 import { attachFilesToFirmware } from "../db/queries.ts";
-import { calculateFileHashes, computeCrc32 } from "../hasher.ts";
+import { computeCrc32 } from "../hasher.ts";
 import { isZipFile, extractZipEntries, sanitizeZipEntryPath } from "../zip-util.ts";
 import { createHash } from "node:crypto";
 
@@ -179,8 +179,11 @@ firmwareRouter.post("/", async (c) => {
         const createdWithFiles = await attachFilesToFirmware(result);
         return c.json({ status: "success", firmware: createdWithFiles[0] });
     } catch (e: unknown) {
-        const msg = e instanceof Error ? `${e.message} ${String((e as { cause?: unknown }).cause || "")}` : String(e);
-        if (msg.includes("UNIQUE constraint failed: system_firmware.path") || msg.includes("duplicate key value")) {
+        const errorMsg = e instanceof Error ? e.message : "";
+        const cause = e && typeof e === "object" && "cause" in e ? (e as { cause?: unknown }).cause : undefined;
+        const causeMsg = cause instanceof Error ? cause.message : typeof cause === "string" ? cause : "";
+        const fullMsg = `${errorMsg} ${causeMsg}`;
+        if (fullMsg.includes("UNIQUE constraint failed: system_firmware.path") || fullMsg.includes("duplicate key value")) {
              return c.json({ error: "Path already mapped" }, 409);
         }
         console.error("Error adding firmware:", e);
@@ -193,7 +196,7 @@ firmwareRouter.post("/upload", async (c) => {
     let formData;
     try {
         formData = await c.req.formData();
-    } catch (err) {
+    } catch {
         return c.json({ error: "Failed to parse multipart form data" }, 400);
     }
 
@@ -208,8 +211,10 @@ firmwareRouter.post("/upload", async (c) => {
         return c.json({ error: `System with id "${systemId}" not found` }, 404);
     }
 
-    const customName = formData.get("name")?.toString().trim() || null;
-    const description = formData.get("description")?.toString().trim() || null;
+    const rawName = formData.get("name");
+    const customName = typeof rawName === "string" ? rawName.trim() || null : null;
+    const rawDesc = formData.get("description");
+    const description = typeof rawDesc === "string" ? rawDesc.trim() || null : null;
 
     // Collect uploaded file objects
     const fileEntries = formData.getAll("files");
