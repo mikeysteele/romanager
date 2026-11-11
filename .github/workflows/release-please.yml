@@ -4,17 +4,165 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
+  packages: write
 
 jobs:
   release-please:
+    name: Release Please
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created || steps.release.outputs['.--release_created'] }}
+      tag_name: ${{ steps.release.outputs.tag_name || steps.release.outputs['.--tag_name'] }}
+      version: ${{ steps.release.outputs.version || steps.release.outputs['.--version'] }}
+      major: ${{ steps.release.outputs.major || steps.release.outputs['.--major'] }}
+      minor: ${{ steps.release.outputs.minor || steps.release.outputs['.--minor'] }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  build-cli:
+    name: Build CLI (${{ matrix.asset }})
+    needs: release-please
+    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.allow_fail || false }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: romanager-sync-linux-x86_64
+          - os: ubuntu-24.04-arm
+            asset: romanager-sync-linux-aarch64
+            allow_fail: true
+          - os: macos-13
+            asset: romanager-sync-darwin-x86_64
+          - os: macos-latest
+            asset: romanager-sync-darwin-aarch64
+          - os: windows-latest
+            asset: romanager-sync-windows-x86_64.exe
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compile CLI Binary
+        env:
+          OUTPUT_NAME: ${{ matrix.asset }}
+        run: pnpm run build:cli
+
+      - name: Generate Checksum
+        shell: bash
+        run: |
+          node -e 'const fs = require("node:fs"), crypto = require("node:crypto"); const file = "apps/cli/dist/${{ matrix.asset }}"; const buf = fs.readFileSync(file); const hash = crypto.createHash("sha256").update(buf).digest("hex"); fs.writeFileSync(file + ".sha256", hash + "  ${{ matrix.asset }}\n");'
+
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-${{ matrix.asset }}
+          path: |
+            apps/cli/dist/${{ matrix.asset }}
+            apps/cli/dist/${{ matrix.asset }}.sha256
+          retention-days: 1
+
+  publish-docker:
+    name: Build & Publish Multi-Arch Docker Image
+    needs: release-please
+    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ needs.release-please.outputs.version }}
+            type=raw,value=${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}
+            type=sha
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  upload-release-assets:
+    name: Attach Release Assets
+    needs: [release-please, build-cli, publish-docker]
+    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Download all CLI binaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cli-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Combine Checksums
+        shell: bash
+        run: |
+          cd release-assets
+          cat *.sha256 > checksums.txt
+          rm -f *.sha256
+          ls -la
+
+      - name: Upload Release Assets to GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: release-assets/*
