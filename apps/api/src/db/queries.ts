@@ -1,5 +1,5 @@
 import { db } from "./index.ts";
-import { games, roms, romFiles, systems, settings, platforms, gamePlatforms, systemFirmware, fileTypeWhitelist } from "./schema.ts";
+import { games, roms, romFiles, systems, settings, platforms, gamePlatforms, systemFirmware, systemFirmwareFiles, fileTypeWhitelist } from "./schema.ts";
 import { eq, like, inArray, and, or, sql } from "drizzle-orm";
 import { match, P } from "ts-pattern";
 import { slugify } from "../utils.ts";
@@ -362,7 +362,8 @@ export async function getSystems() {
   );
 
   const allFirmware = await db.select().from(systemFirmware);
-  const firmwareMap = groupByKey(allFirmware, (fw) => fw.systemId);
+  const allFirmwareWithFiles = await attachFilesToFirmware(allFirmware);
+  const firmwareMap = groupByKey(allFirmwareWithFiles, (fw) => fw.systemId);
 
   return allSystems.map((sys) => ({
     ...sys,
@@ -371,14 +372,40 @@ export async function getSystems() {
   }));
 }
 
+export async function attachFilesToFirmware<T extends { id: string; filename: string; path?: string | null; sha1?: string | null; md5?: string | null; crc32?: string | null }>(firmwareList: T[]) {
+  if (firmwareList.length === 0) return [];
+  const allFiles = await db.select().from(systemFirmwareFiles);
+  const filesByFwId = groupByKey(allFiles, (f) => f.firmwareId);
+
+  return firmwareList.map((fw) => {
+    const childFiles = filesByFwId.get(fw.id) || [];
+    const files = childFiles.length > 0 ? childFiles : (fw.path ? [{
+      id: fw.id,
+      firmwareId: fw.id,
+      relPath: fw.filename,
+      path: fw.path,
+      filename: fw.filename,
+      size: 0,
+      sha1: fw.sha1 ?? null,
+      md5: fw.md5 ?? null,
+      crc32: fw.crc32 ?? null,
+    }] : []);
+    return {
+      ...fw,
+      files,
+    };
+  });
+}
+
 export async function getSystemBySlug(slug: string) {
   const system = await db.select().from(systems).where(eq(systems.slug, slug)).get();
   if (!system) return null;
 
-  const firmware = await db
+  const rawFirmware = await db
     .select()
     .from(systemFirmware)
     .where(eq(systemFirmware.systemId, system.id));
+  const firmware = await attachFilesToFirmware(rawFirmware);
   const activeRoms = await db
     .select({ count: sql<number>`count(${roms.id})`.mapWith(Number) })
     .from(roms)
@@ -481,10 +508,11 @@ async function getSystemWithFirmware(systemId: string | null) {
   if (!systemId) return null;
   const sysRow = await db.select().from(systems).where(eq(systems.id, systemId)).get();
   if (!sysRow) return null;
-  const firmware = await db
+  const rawFirmware = await db
     .select()
     .from(systemFirmware)
     .where(eq(systemFirmware.systemId, sysRow.id));
+  const firmware = await attachFilesToFirmware(rawFirmware);
   return { ...sysRow, firmware };
 }
 

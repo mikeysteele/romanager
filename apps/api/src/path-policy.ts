@@ -77,11 +77,18 @@ export async function getAllowedStorageRoots(): Promise<string[]> {
     if (customSaves?.value) {
       roots.push(path.resolve(customSaves.value));
     }
+    const customBios = await db.select().from(settings).where(eq(settings.key, "bios_dir")).get();
+    if (customBios?.value) {
+      roots.push(path.resolve(customBios.value));
+    }
   } catch {
     // DB not ready or during schema tests
   }
 
-  // 4. Default saves dir
+  // 4. Default bios and saves dirs
+  roots.push(path.resolve(process.cwd(), "bios"));
+  roots.push(path.resolve(romsDir, "bios"));
+  roots.push(path.resolve(process.cwd(), "storage/bios"));
   roots.push(path.resolve(process.cwd(), "storage/saves"));
 
   // 5. In test environment, also permit os.tmpdir() and process.cwd()
@@ -136,3 +143,28 @@ export async function getAllowedBrowseRoots(): Promise<Array<{ label: string; pa
 
   return allowedRoots;
 }
+
+export async function getBiosDir(): Promise<string> {
+  if (process.env.BIOS_DIR) {
+    return path.resolve(process.env.BIOS_DIR);
+  }
+  try {
+    const customBios = await db.select().from(settings).where(eq(settings.key, "bios_dir")).get();
+    if (customBios?.value) {
+      return path.resolve(customBios.value);
+    }
+  } catch {
+    // DB not ready
+  }
+  const romsDir = process.env.ROMS_DIR || path.resolve(process.cwd(), "roms");
+  const biosSubDir = path.resolve(romsDir, "bios");
+  if (fs.existsSync(biosSubDir)) {
+    return biosSubDir;
+  }
+  const localBiosDir = path.resolve(process.cwd(), "bios");
+  if (fs.existsSync(localBiosDir)) {
+    return localBiosDir;
+  }
+  return process.env.ROMS_DIR ? biosSubDir : localBiosDir;
+}
+
