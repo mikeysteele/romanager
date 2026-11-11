@@ -340,27 +340,52 @@ Clears all staged records from the unmapped files table, allowing a clean rescan
 ## 8. Firmware & BIOS (`/api/firmware`)
 
 ### `GET /api/firmware`
-List all mapped system firmware files.
+List all mapped system firmware packages along with their child member files.
+
+### `GET /api/firmware/:id/file` (or `/api/firmware/files/:fileId`)
+Stream a specific firmware file or the primary file in a bundle for emulation / download.
 
 ### `POST /api/firmware`
-Map a physical file as required firmware for a specific system.
+Map physical file(s) as required firmware for a specific system (supports single-file or multi-file payload).
 
-- **Request Body**:
+- **Multi-File Request Body**:
   ```json
   {
-    "systemId": "psx",
-    "filename": "scph1001.bin",
-    "path": "/roms/bios/scph1001.bin",
-    "description": "PlayStation BIOS (USA)",
-    "md5": "924e392ed05558ffdb115408c163d860",
-    "crc32": "371573f4"
+    "systemId": "ps2",
+    "name": "PlayStation 2 BIOS SCPH-39001",
+    "filename": "scph39001.bin",
+    "path": "/roms/bios/ps2/scph39001",
+    "files": [
+      {
+        "filename": "scph39001.bin",
+        "relPath": "scph39001.bin",
+        "path": "/roms/bios/ps2/scph39001/scph39001.bin",
+        "size": 4194304
+      },
+      {
+        "filename": "scph39001.nvm",
+        "relPath": "scph39001.nvm",
+        "path": "/roms/bios/ps2/scph39001/scph39001.nvm",
+        "size": 1024
+      }
+    ]
   }
   ```
-- **Response `200 OK`**: Returns the inserted firmware record.
+- **Response `200 OK`**: Returns the inserted firmware record with child files.
 - **Response `409 Conflict`**: Path already mapped.
 
+### `POST /api/firmware/upload`
+Upload firmware files directly from browser (multipart/form-data). Supports multiple files and automatic extraction of `.zip` archives.
+
+- **Form Fields**:
+  - `systemId`: System ID (required)
+  - `name`: Bundle name (optional)
+  - `description`: Notes/description (optional)
+  - `files`: One or more files / `.zip` archive
+- **Response `201 Created`**: Returns created firmware bundle with all extracted and hashed files.
+
 ### `DELETE /api/firmware/:id`
-Unmaps a firmware entry (does not delete physical file on disk).
+Unmaps a firmware bundle and all its associated child files.
 
 - **Response `200 OK`**: `{"success": true, "message": "Firmware ... removed."}`
 

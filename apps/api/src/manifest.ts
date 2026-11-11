@@ -7,6 +7,7 @@ import {
   roms,
   romFiles,
   systemFirmware,
+  systemFirmwareFiles,
 } from "./db/schema.ts";
 import { eq, and, asc } from "drizzle-orm";
 import { createHash } from "node:crypto";
@@ -252,22 +253,62 @@ export async function generateManifest(deviceId: string): Promise<Manifest | nul
         .where(eq(systemFirmware.systemId, sysId));
 
       for (const fw of fws) {
-        const fwPath = `bios/${fw.filename}`.replace(/\/+/g, "/").replace(/^\//, "");
-        if (claimedPaths.has(fwPath)) {
-          continue;
-        }
-        claimedPaths.set(fwPath, fw.filename);
+        const childFiles = await db
+          .select()
+          .from(systemFirmwareFiles)
+          .where(eq(systemFirmwareFiles.firmwareId, fw.id));
 
-        let fwSize = 0;
-        try {
-          const stat = await fsStat(fw.path);
-          fwSize = stat.size;
-        } catch {
-          // Keep 0 if file stat fails
+        const effectiveFiles = childFiles.length > 0 ? childFiles : (fw.path ? [{
+          id: fw.id,
+          firmwareId: fw.id,
+          relPath: fw.filename,
+          path: fw.path,
+          filename: fw.filename,
+          size: 0,
+          sha1: fw.sha1 ?? null,
+          md5: fw.md5 ?? null,
+          crc32: fw.crc32 ?? null,
+        }] : []);
+
+        if (effectiveFiles.length === 0) continue;
+
+        let totalSetSize = 0;
+        const setFiles: ManifestFile[] = [];
+        const hashInputs: Array<{ relPath: string; sha1?: string | null }> = [];
+
+        for (const cf of effectiveFiles) {
+          const fwPath = `bios/${cf.relPath || cf.filename}`.replace(/\/+/g, "/").replace(/^\//, "");
+          if (claimedPaths.has(fwPath)) {
+            continue;
+          }
+          claimedPaths.set(fwPath, cf.filename);
+
+          let fSize = cf.size || 0;
+          if (fSize === 0) {
+            try {
+              const stat = await fsStat(cf.path);
+              fSize = stat.size;
+            } catch {
+              // Keep 0 if file stat fails
+            }
+          }
+          totalSetSize += fSize;
+
+          const fSha1 = cf.sha1 || "";
+          hashInputs.push({ relPath: cf.relPath || cf.filename, sha1: fSha1 });
+          setFiles.push({
+            id: cf.id,
+            path: fwPath,
+            size: fSize,
+            sha1: fSha1,
+            role: "aux",
+          });
         }
 
-        const fwSha1 = fw.sha1 || "";
-        const setHash = fwSha1 ? calculateSetHash([{ relPath: fw.filename, sha1: fwSha1 }]) : fw.id;
+        if (setFiles.length === 0) continue;
+
+        const setHash = calculateSetHash(hashInputs);
+        const primaryFile = setFiles[0];
 
         sets.push({
           kind: "firmware",
@@ -275,20 +316,12 @@ export async function generateManifest(deviceId: string): Promise<Manifest | nul
           gameId: null,
           systemId: fw.systemId,
           esFolder: "bios",
-          name: fw.description || fw.filename,
-          setType: "single",
-          launchPath: fwPath,
+          name: fw.name || fw.description || fw.filename,
+          setType: setFiles.length > 1 ? "directory" : "single",
+          launchPath: primaryFile.path,
           setHash,
-          totalSize: fwSize,
-          files: [
-            {
-              id: fw.id,
-              path: fwPath,
-              size: fwSize,
-              sha1: fwSha1,
-              role: "aux",
-            },
-          ],
+          totalSize: totalSetSize,
+          files: setFiles,
           requires: [],
           implicit: false,
         });

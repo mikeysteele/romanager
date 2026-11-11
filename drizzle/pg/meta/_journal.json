@@ -15,6 +15,13 @@
       "when": 1793094753390,
       "tag": "0001_gorgeous_dakota_north",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794351389984,
+      "tag": "0002_flawless_chamber",
+      "breakpoints": true
     }
   ]
 }
