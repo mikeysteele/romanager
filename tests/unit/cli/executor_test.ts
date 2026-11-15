@@ -189,3 +189,161 @@ test("cli executor: atomic installation, state recording, and clean removal", as
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 });
+
+test("cli executor: multi-file firmware directory sync strips bios/ prefix and installs all files", async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "romanager-fw-executor-test-"));
+  const romsDir = `${tempDir}/roms`;
+  const biosDir = `${tempDir}/bios`;
+  const statePath = `${tempDir}/state.json`;
+
+  await fs.mkdir(romsDir, { recursive: true });
+  await fs.mkdir(biosDir, { recursive: true });
+
+  const dummyConfig: CliConfig = {
+    server: "http://localhost:8000",
+    apiKey: "rmg_test",
+    deviceId: "dev-test",
+    preset: "batocera",
+    paths: {
+      roms: romsDir,
+      bios: biosDir,
+      saves: `${tempDir}/saves`,
+    },
+    sync: {
+      concurrency: 2,
+      deleteMode: "delete",
+      trashRetentionDays: 14,
+      minFreeBytes: 0,
+    },
+    saves: {
+      enabled: false,
+      include: [],
+      debounceSeconds: 30,
+    },
+    hooks: {},
+  };
+
+  const bootContent = "DC_BOOT_BINARY_DATA";
+  const flashContent = "DC_FLASH_BINARY_DATA";
+
+  const computeSha1 = async (content: string) => {
+    const tmp = path.join(tempDir, `hash-${Math.random()}.tmp`);
+    await fs.writeFile(tmp, content, "utf-8");
+    const sha1 = await calculateFileSha1(tmp);
+    await fs.rm(tmp, { force: true });
+    return sha1;
+  };
+
+  const bootSha1 = await computeSha1(bootContent);
+  const flashSha1 = await computeSha1(flashContent);
+
+  const fwSet: ManifestSet = {
+    kind: "firmware",
+    id: "fw-dc-set",
+    gameId: null,
+    systemId: "sys-dc",
+    esFolder: "bios",
+    name: "Dreamcast BIOS",
+    setType: "directory",
+    launchPath: "bios/dc/dc_boot.bin",
+    setHash: "sethash-dc-fw",
+    totalSize: bootContent.length + flashContent.length,
+    files: [
+      {
+        id: "fw-boot-id",
+        path: "bios/dc/dc_boot.bin",
+        size: bootContent.length,
+        sha1: bootSha1,
+        role: "aux",
+      },
+      {
+        id: "fw-flash-id",
+        path: "bios/dc/dc_flash.bin",
+        size: flashContent.length,
+        sha1: flashSha1,
+        role: "aux",
+      },
+    ],
+    requires: [],
+    implicit: false,
+  };
+
+  const manifest: Manifest = {
+    deviceId: "dev-test",
+    version: "v-fw-1",
+    generatedAt: new Date().toISOString(),
+    overBudget: false,
+    totalBytes: fwSet.totalSize,
+    sets: [fwSet],
+    warnings: [],
+  };
+
+  const mockClient = {
+    downloadFile: async (fileId: string, destPath: string) => {
+      await fs.mkdir(dirname(destPath), { recursive: true });
+      if (fileId === "fw-boot-id") {
+        await fs.writeFile(destPath, bootContent, "utf-8");
+      } else if (fileId === "fw-flash-id") {
+        await fs.writeFile(destPath, flashContent, "utf-8");
+      }
+    },
+  } as unknown as ApiClient;
+
+  try {
+    const initialState: CliState = await loadState(statePath);
+    const plan = await createSyncPlan(manifest, initialState, dummyConfig);
+    assertEquals(plan.toInstall.length, 1);
+    assertEquals(plan.toInstall[0].filesToDownload.length, 2);
+
+    const execResult = await executeSyncPlan(
+      plan,
+      manifest,
+      initialState,
+      statePath,
+      dummyConfig,
+      mockClient
+    );
+    assertEquals(execResult.installedCount, 1);
+    assertEquals(execResult.failedCount, 0);
+
+    // Verify files landed directly under biosDir/dc/... without double bios/ prefix
+    const installedBoot = path.join(biosDir, "dc", "dc_boot.bin");
+    const installedFlash = path.join(biosDir, "dc", "dc_flash.bin");
+    assertEquals((await fs.stat(installedBoot)).isFile(), true);
+    assertEquals((await fs.stat(installedFlash)).isFile(), true);
+
+    // Verify re-planning is idempotent (no updates or conflicts)
+    const reloadedState = await loadState(statePath);
+    const secondPlan = await createSyncPlan(manifest, reloadedState, dummyConfig);
+    assertEquals(secondPlan.toInstall.length, 0);
+    assertEquals(secondPlan.toUpdate.length, 0);
+    assertEquals(secondPlan.conflicts.length, 0);
+    assertEquals(secondPlan.unchangedCount, 1);
+
+    // Verify removal cleans up both firmware files
+    const emptyManifest: Manifest = { ...manifest, version: "v-fw-2", sets: [] };
+    const removePlan = await createSyncPlan(emptyManifest, reloadedState, dummyConfig);
+    assertEquals(removePlan.toRemove.length, 1);
+
+    const removeResult = await executeSyncPlan(
+      removePlan,
+      emptyManifest,
+      reloadedState,
+      statePath,
+      dummyConfig,
+      mockClient
+    );
+    assertEquals(removeResult.removedCount, 1);
+    assertEquals(removeResult.failedCount, 0);
+
+    let bootExists = true;
+    try {
+      await fs.stat(installedBoot);
+    } catch {
+      bootExists = false;
+    }
+    assertEquals(bootExists, false);
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
