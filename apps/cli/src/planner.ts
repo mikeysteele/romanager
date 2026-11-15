@@ -1,4 +1,3 @@
-import { resolve } from "node:path";
 import { stat, statfs } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -6,6 +5,7 @@ import type { Manifest, ManifestSet, ManifestFile } from "@repo/shared";
 import type { CliConfig } from "./config.ts";
 import type { CliState, StateSetRecord } from "./state.ts";
 import { calculateFileSha1 } from "./hasher.ts";
+import { resolveSetFilePath } from "./path-utils.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -91,14 +91,13 @@ export async function createSyncPlan(
     const key = `${set.kind}:${set.id}`;
     manifestSetKeys.add(key);
 
-    const rootDir = set.kind === "firmware" ? config.paths.bios : config.paths.roms;
     const stateRecord = state.sets[key];
 
     if (!stateRecord) {
       // Set is NOT owned locally. Check for collision with existing unowned files
       const existingPaths: string[] = [];
       for (const f of set.files) {
-        const fullPath = resolve(rootDir, f.path);
+        const fullPath = resolveSetFilePath(config, set.kind, f.path);
         try {
           const s = await stat(fullPath);
           const isFileOrDir = typeof s.isFile === "function" ? (s.isFile() || s.isDirectory()) : Boolean((s as any).isFile || (s as any).isDirectory);
@@ -133,7 +132,7 @@ export async function createSyncPlan(
         const conflictPaths: string[] = [];
 
         for (const f of set.files) {
-          const fullPath = resolve(rootDir, f.path);
+          const fullPath = resolveSetFilePath(config, set.kind, f.path);
           try {
             const s = await stat(fullPath);
             const recorded = stateRecord.files[f.path];
@@ -177,7 +176,7 @@ export async function createSyncPlan(
         const conflictPaths: string[] = [];
 
         for (const [relPath, rec] of Object.entries(stateRecord.files)) {
-          const fullPath = resolve(rootDir, relPath);
+          const fullPath = resolveSetFilePath(config, set.kind, relPath);
           try {
             const s = await stat(fullPath);
             if (
@@ -211,7 +210,7 @@ export async function createSyncPlan(
             } else {
               // verify it actually exists on disk
               try {
-                await stat(resolve(rootDir, f.path));
+                await stat(resolveSetFilePath(config, set.kind, f.path));
               } catch {
                 filesToDownload.push(f);
               }
@@ -243,10 +242,9 @@ export async function createSyncPlan(
       // Candidate for removal
       let locallyModified = false;
       const modifiedPaths: string[] = [];
-      const rootDir = stateRecord.kind === "firmware" ? config.paths.bios : config.paths.roms;
 
       for (const [relPath, rec] of Object.entries(stateRecord.files)) {
-        const fullPath = resolve(rootDir, relPath);
+        const fullPath = resolveSetFilePath(config, stateRecord.kind, relPath);
         try {
           const s = await stat(fullPath);
           if (
