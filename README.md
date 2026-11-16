@@ -11,11 +11,11 @@ Romanager brings the streamlined, automated management style of the "*arr" ecosy
 - 🎮 **Unified Game & Multi-Platform Catalog**: Group multiple regional versions, revisions, and cross-platform ROMs under canonical game entries with rich artwork, release metadata, and ratings.
 - 🔍 **Non-Destructive Ingestion & Staging**: Automatic recursive directory scanner detects new files safely into an unmapped staging table (`scanned_files`) without polluting your clean library.
 - 🏷️ **Intelligent Unmapped Triage**: Fast, bulk review of scanned files with automatic title guessing, RAWG online database matching, platform filtering, and region tagging (USA, EUR, JPN, WLD).
-- 🧩 **Firmware & BIOS Tracker**: Manage system firmware and BIOS files required by emulators; map discovered BIOS dumps directly to emulation platforms.
-- 💻 **Companion CLI (`romanager-sync`)**: Standalone Single Executable Application (SEA) for Batocera, Steam Deck, and EmulationStation handhelds supporting atomic multi-file ROM sets, live SSE watch daemon, and bidirectional save backup/restore.
-- ⚡ **Background Processing & Real-Time Sync**: Multi-threaded architecture utilizing Node.js worker threads (`node:worker_threads`) for CPU/IO-heavy scanning and physical file deletion, with live progress updates streamed via Server-Sent Events (SSE).
+- 🧩 **Multi-File Firmware & BIOS Tracker**: Manage single and multi-file firmware sets required by emulators; upload directly from the browser (drag-and-drop, multi-file, or auto-extracted `.zip` archives) or assign discovered dumps.
+- 💻 **Companion CLI (`romanager-sync`)**: Standalone native executable compiled via `scriptc` AOT for Batocera, Steam Deck, and EmulationStation handhelds supporting atomic multi-file ROM & firmware sets, live SSE watch daemon, and bidirectional save backup/restore.
+- ⚡ **Background Processing & Real-Time Sync**: Multi-threaded architecture utilizing Node.js worker threads (`node:worker_threads`) for set-aware scanning and physical file deletion, with live progress updates streamed via Server-Sent Events (SSE).
 - 🌐 **Embedded WebDAV Server**: Mount your ROM collection directly to network-connected retro handhelds (e.g. Miyoo Mini, Anbernic, Steam Deck, PS Vita) or emulator frontends (RetroArch, EmulationStation).
-- 🕹️ **In-Browser Emulator Shell**: Built-in player foundation to launch and play ROMs directly in your browser.
+- 🕹️ **In-Browser Emulator (`Nostalgist`)**: Built-in RetroArch WebAssembly player with automatic core selection, multi-file BIOS loading, save states, and SRAM persistence.
 
 ---
 
@@ -25,9 +25,9 @@ Romanager is built as a TypeScript monorepo powered by **Node.js 26** and **pnpm
 
 | Workspace | Description | Tech Stack |
 | :--- | :--- | :--- |
-| [`apps/api`](apps/api) | REST API, WebDAV, sync endpoints & SSE event bus | Node.js 26, Hono (`@hono/node-server`), Drizzle ORM, LibSQL/SQLite, `node:worker_threads` |
-| [`apps/ui`](apps/ui) | Single Page Application (SPA) | Lit Web Components, `@lit-labs/router`, Open Props CSS, Vite 8 |
-| [`apps/cli`](apps/cli) | Companion CLI sync agent (`romanager-sync`) | Node.js 26 native SEA, Rolldown, TypeScript 7, `@repo/shared` |
+| [`apps/api`](apps/api) | REST API, WebDAV, sync endpoints & SSE event bus | Node.js 26, Hono (`@hono/node-server`), Drizzle ORM (SQLite/LibSQL & PostgreSQL), `node:worker_threads` |
+| [`apps/ui`](apps/ui) | Single Page Application (SPA) | Lit Web Components, `@lit-labs/router`, Open Props CSS, Nostalgist WASM, Vite 8 |
+| [`apps/cli`](apps/cli) | Companion CLI sync agent (`romanager-sync`) | `scriptc` AOT native compilation, TypeScript 7, `@repo/shared` |
 | [`packages/shared`](packages/shared) | Shared domain models, types, and Zod schemas | TypeScript 7, Zod |
 | [`packages/ui-components`](packages/ui-components) | Design system & reusable web components | Lit Web Components, Open Props |
 | [`tests`](tests) | Isolated test suite (`@repo/tests`) | Vitest 5, Playwright BDD, JSDOM |
@@ -46,8 +46,9 @@ For comprehensive technical documentation, refer to the guides in the [`docs/`](
 - 🎨 **[UI Components & Design System](docs/ui-components.md)**: Lit component catalog, routing table, and Open Props design tokens.
 - 📑 **[Architecture Decision Records (ADRs)](docs/adr/README.md)**: Records of key architectural decisions:
   - [ADR 0001: Migrate from Deno to Node.js](docs/adr/0001-migrate-from-deno-to-nodejs.md)
-  - [ADR 0002: CLI Standalone Binaries via Node SEA](docs/adr/0002-cli-standalone-binaries-via-node-sea.md)
+  - [ADR 0002: CLI Standalone Binaries via Node SEA](docs/adr/0002-cli-standalone-binaries-via-node-sea.md) *(Superseded by ADR 0004)*
   - [ADR 0003: Modern Frontend Toolchain (Oxc, Vite 8, TypeScript 7)](docs/adr/0003-frontend-toolchain-oxc-vite-ts7.md)
+  - [ADR 0004: CLI Standalone Binary Compilation via `scriptc` AOT](docs/adr/0004-cli-aot-compilation-via-scriptc.md)
 
 ---
 
@@ -56,7 +57,7 @@ For comprehensive technical documentation, refer to the guides in the [`docs/`](
 The Romanager Companion CLI is a standalone binary that runs on emulation devices (Batocera PC, Steam Deck, Raspberry Pi, Anbernic, or any Linux handheld running EmulationStation). It keeps local storage in sync with a server-defined profile.
 
 ### Highlights
-- **Atomic Multi-File ROM Sets**: Games composed of multiple files (`.cue`+`.bin`, `.gdi`+tracks, `.m3u` playlists, multi-disc folders) sync, verify, and delete as single atomic units.
+- **Atomic Multi-File ROM & Firmware Sets**: Games (`.cue`+`.bin`, `.gdi`+tracks, `.m3u` playlists, multi-disc folders) and multi-file firmware sets sync, verify, and delete as single atomic units.
 - **Per-Device Rules & Profiles**: Define what each device receives (e.g. storage budget limits, region preferences like `USA > EUR > JPN`, `oneRomPerGame` deduplication, system inclusion/exclusion rules).
 - **Authenticated & Scoped**: Requests carry a device-scoped API key (`rmg_...`). Web UI and WebDAV remain unauthenticated for internal home networks.
 - **Resumable & Verified**: Downloads support HTTP `Range` headers for auto-resume and verify SHA-1 checksums upon receipt before moving into active library directories.
@@ -72,7 +73,7 @@ The Romanager Companion CLI is a standalone binary that runs on emulation device
 
 ### 2. Building the CLI Standalone Executable
 
-Generate a standalone native executable with zero runtime dependencies using Node.js 26 native Single Executable Application (SEA) and Rolldown:
+Generate a standalone native executable with zero runtime dependencies using `scriptc` AOT compilation:
 
 ```bash
 # Build standalone CLI binary
