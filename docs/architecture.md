@@ -21,15 +21,15 @@ graph TB
         WebDAVMount["WebDAV Server (/webdav)"]
         EventBus["EventEmitter EventBus"]
         
-        subgraph Workers ["Deno Web Workers"]
+        subgraph Workers ["Node.js Worker Threads (node:worker_threads)"]
             ScanWorker["Scanner Worker (workers/scanner.ts)"]
             DelWorker["Deletion Worker (workers/deletion.worker.ts)"]
         end
         
         subgraph Storage ["Data & Storage"]
             Drizzle["Drizzle ORM"]
-            LibSQL["LibSQL / SQLite (romanager.db)"]
-            DiskStorage["Physical ROM Directory"]
+            DB["SQLite (LibSQL) / PostgreSQL"]
+            DiskStorage["Physical ROM & BIOS Directories"]
         end
     end
 
@@ -48,9 +48,9 @@ graph TB
     
     WebDAVMount --> |Direct File I/O| DiskStorage
     ScanWorker --> |Recursive Walk| DiskStorage
-    DelWorker --> |Deno.remove| DiskStorage
+    DelWorker --> |node:fs/promises rm| DiskStorage
     
-    Drizzle --> LibSQL
+    Drizzle --> DB
     ScanWorker --> |Stage Scanned Files| Drizzle
     ScanWorker --> |Emit Progress| EventBus
     EventBus --> |Push Update| SSEListener
@@ -67,16 +67,23 @@ Romanager/
 ├── apps/
 │   ├── api/                     # Backend application (Hono, Drizzle, WebDAV)
 │   │   ├── main.ts              # Server entry point & environment loading
-│   │   ├── drizzle.config.ts    # Drizzle Kit configuration
+│   │   ├── drizzle.config.ts    # Drizzle Kit configuration (SQLite)
+│   │   ├── drizzle.pg.config.ts # Drizzle Kit configuration (PostgreSQL)
 │   │   └── src/
 │   │       ├── app.ts           # Hono server factory & route registration
 │   │       ├── sse.ts           # EventBus EventEmitter instance
 │   │       ├── webdav.ts        # Embedded WebDAV handler
-│   │       ├── scanner.ts       # Directory crawler logic
+│   │       ├── scanner.ts       # Directory crawler orchestrator
+│   │       ├── scanner-sets.ts  # Set-aware ROM grouping & staging
+│   │       ├── set-parser.ts    # CUE/GDI/M3U descriptor parser
+│   │       ├── manifest.ts      # Device sync manifest generator
+│   │       ├── path-policy.ts   # Storage root containment & BIOS path policy
+│   │       ├── zip-util.ts      # Pure Node zlib ZIP extraction with Zip Slip protection
 │   │       ├── metadata.ts      # RAWG API client
 │   │       ├── utils.ts         # Crypto hashing and slug generation
 │   │       ├── worker.ts        # Deletion worker singleton manager
-│   │       ├── db/              # Database initialization, schema, and queries
+│   │       ├── worker-adapter.ts# Node.js worker_threads adapter
+│   │       ├── db/              # Database initialization, multi-dialect schema, and queries
 │   │       ├── routes/          # Modular API route handlers
 │   │       └── workers/         # Node.js Worker thread scripts
 │   ├── ui/                      # Frontend Single Page Application (Lit, Vite)
@@ -85,13 +92,12 @@ Romanager/
 │   │       ├── index.html       # HTML root with theme fonts
 │   │       ├── index.ts         # Application bootstrap & entry point
 │   │       ├── global/          # Open Props global styles (app.css)
-│   │       └── components/      # Lit Web Components & pages
-│   └── cli/                     # CLI Companion Daemon (Single Executable Application)
-│       ├── sea-config.json      # Node.js SEA configuration
-│       └── src/
+│   │       └── components/      # Lit Web Components & pages (incl. Nostalgist emulator)
+│   └── cli/                     # Companion Sync CLI (`romanager-sync`, compiled via scriptc AOT)
+│       └── src/                 # Sync planner, atomic executor, watch daemon, saves sync
 ├── packages/
 │   ├── shared/                  # Cross-boundary TypeScript definitions & Zod schemas
-│   │   ├── types.ts             # Data models & schemas (Game, Rom, System, etc.)
+│   │   ├── types.ts             # Data models & schemas (Game, Rom, SystemFirmware, etc.)
 │   │   └── utils.ts             # Path normalizers and schema validators
 │   └── ui-components/           # Reusable Lit web component library
 │       └── src/                 # data-table, game-card, ui-dialog, ui-tabs, ui-toast
@@ -109,7 +115,7 @@ Romanager/
 
 ## 3. Concurrency & Web Worker Architecture
 
-To keep the HTTP server fast and responsive, time-consuming file I/O operations are offloaded to dedicated Deno Web Workers:
+To keep the HTTP server fast and responsive, time-consuming file I/O operations are offloaded to dedicated Node.js worker threads (`node:worker_threads` via `worker-adapter.ts`):
 
 ### 1. Scanner Worker (`apps/api/src/workers/scanner.ts`)
 - **Command Dispatch**: Triggered by a POST request to `/api/scans` or `/api/settings` when `roms_dir` is updated.
@@ -125,8 +131,8 @@ To keep the HTTP server fast and responsive, time-consuming file I/O operations 
   - `{ type: 'error', message: 'Directory not found' }`
 
 ### 2. Deletion Worker (`apps/api/src/workers/deletion.worker.ts`)
-- **Isolation**: Physical disk deletions (`Deno.remove`) run independently of the database transactions.
-- **Resilience**: If a file was already removed manually on disk, the worker catches `Deno.errors.NotFound` without breaking the deletion queue.
+- **Isolation**: Physical disk deletions (`node:fs/promises` `rm`) run independently of the database transactions and enforce allowed storage root containment (`isWithinRoots`).
+- **Resilience**: If a file was already removed manually on disk, the worker catches `ENOENT` without breaking the deletion queue.
 - **Two-Phase Confirmation**:
   1. Main thread marks ROM record with `pendingDelete: true` and dispatches paths to the worker.
   2. Worker deletes files on disk and posts `{ type: 'ROM_DELETED', id }`.
