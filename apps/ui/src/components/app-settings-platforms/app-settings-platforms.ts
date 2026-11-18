@@ -108,19 +108,74 @@ export class AppSettingsPlatforms extends LitElement {
         gap: var(--spacing-xs);
         margin-top: var(--spacing-sm);
     }
+    .firmware-item-container {
+        display: flex;
+        flex-direction: column;
+        background: var(--color-bg-tertiary);
+        border-radius: var(--border-radius-sm);
+        border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        overflow: hidden;
+    }
     .firmware-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: var(--color-bg-tertiary);
         padding: var(--spacing-sm) var(--spacing-md);
-        border-radius: var(--border-radius-sm);
         font-family: monospace;
         font-size: var(--font-size-sm);
+    }
+    .firmware-child-files {
+        border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        background: rgba(0, 0, 0, 0.15);
+        padding: var(--spacing-xs) var(--spacing-md);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-family: monospace;
+        font-size: 0.8em;
+    }
+    .firmware-child-file {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--spacing-md);
+        color: var(--color-text-secondary);
+        padding: 2px 0;
     }
     .firmware-path {
         color: var(--color-text-secondary);
         font-size: 0.8em;
+    }
+    .drop-zone {
+        border: 2px dashed var(--border-color, rgba(255, 255, 255, 0.2));
+        border-radius: var(--border-radius-md);
+        padding: var(--spacing-xl);
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background-color 0.2s;
+        margin-bottom: var(--spacing-md);
+        background: var(--color-bg-tertiary);
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: var(--color-accent-primary, #f5c518);
+        background: rgba(245, 197, 24, 0.05);
+    }
+    .selected-files-list {
+        margin-top: var(--spacing-sm);
+        max-height: 180px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+    .selected-file-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--color-bg-secondary);
+        padding: 4px 8px;
+        border-radius: var(--border-radius-sm);
+        font-size: 0.85em;
     }
     .actions {
         margin-top: var(--spacing-2xl);
@@ -142,6 +197,16 @@ export class AppSettingsPlatforms extends LitElement {
   @state() newPlatformEmulatable: boolean = false;
   @state() newPlatformCore: string = '';
   @state() newPlatformEmulatableTouched: boolean = false;
+
+  @state() isUploadDialogOpen: boolean = false;
+  @state() uploadPlatformId: string | null = null;
+  @state() uploadPlatformName: string = '';
+  @state() uploadCustomName: string = '';
+  @state() uploadDescription: string = '';
+  @state() selectedUploadFiles: File[] = [];
+  @state() isUploading: boolean = false;
+  @state() isDraggingOver: boolean = false;
+  @state() expandedFirmwareIds: Set<string> = new Set();
 
   private sortPlatforms(list: PlatformRead[]): PlatformRead[] {
       return [...list].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
@@ -435,6 +500,119 @@ export class AppSettingsPlatforms extends LitElement {
       this.activePlatformId = null;
   }
 
+  openUploadDialog(platform: PlatformRead) {
+      this.uploadPlatformId = platform.id;
+      this.uploadPlatformName = platform.name;
+      this.uploadCustomName = '';
+      this.uploadDescription = '';
+      this.selectedUploadFiles = [];
+      this.isUploading = false;
+      this.isDraggingOver = false;
+      this.isUploadDialogOpen = true;
+  }
+
+  closeUploadDialog() {
+      this.isUploadDialogOpen = false;
+      this.uploadPlatformId = null;
+      this.uploadPlatformName = '';
+      this.uploadCustomName = '';
+      this.uploadDescription = '';
+      this.selectedUploadFiles = [];
+      this.isUploading = false;
+      this.isDraggingOver = false;
+  }
+
+  toggleExpandFirmware(id: string) {
+      const next = new Set(this.expandedFirmwareIds);
+      if (next.has(id)) {
+          next.delete(id);
+      } else {
+          next.add(id);
+      }
+      this.expandedFirmwareIds = next;
+  }
+
+  handleUploadFilesSelected(e: Event) {
+      const input = e.target as HTMLInputElement;
+      if (input.files && input.files.length > 0) {
+          const files = Array.from(input.files);
+          this.selectedUploadFiles = [...this.selectedUploadFiles, ...files];
+          input.value = '';
+      }
+  }
+
+  handleDragOver(e: DragEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      this.isDraggingOver = true;
+  }
+
+  handleDragLeave(e: DragEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      this.isDraggingOver = false;
+  }
+
+  handleUploadDrop(e: DragEvent) {
+      e.preventDefault();
+      e.stopPropagation();
+      this.isDraggingOver = false;
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const files = Array.from(e.dataTransfer.files);
+          this.selectedUploadFiles = [...this.selectedUploadFiles, ...files];
+      }
+  }
+
+  removeSelectedUploadFile(index: number) {
+      this.selectedUploadFiles = this.selectedUploadFiles.filter((_, i) => i !== index);
+  }
+
+  formatBytes(bytes?: number | null): string {
+      if (!bytes || bytes <= 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  async submitFirmwareUpload(e: Event) {
+      e.preventDefault();
+      if (!this.uploadPlatformId || this.selectedUploadFiles.length === 0 || this.isUploading) return;
+
+      this.isUploading = true;
+      try {
+          const formData = new FormData();
+          formData.append('systemId', this.uploadPlatformId);
+          if (this.uploadCustomName.trim()) {
+              formData.append('name', this.uploadCustomName.trim());
+          }
+          if (this.uploadDescription.trim()) {
+              formData.append('description', this.uploadDescription.trim());
+          }
+          for (const file of this.selectedUploadFiles) {
+              formData.append('files', file);
+          }
+
+          const res = await fetch('/api/firmware/upload', {
+              method: 'POST',
+              body: formData,
+          });
+
+          if (res.ok) {
+              toast('Firmware uploaded successfully', 'success');
+              this.closeUploadDialog();
+              await this.fetchPlatforms();
+          } else {
+              const body = await res.json().catch(() => ({}));
+              toast(body.error || 'Failed to upload firmware', 'error');
+          }
+      } catch (err) {
+          console.error('Failed to upload firmware:', err);
+          toast('Failed to upload firmware', 'error');
+      } finally {
+          this.isUploading = false;
+      }
+  }
+
   _renderPlatform(platform: PlatformRead) {
       const romCount = platform.romCount ?? 0;
       const canDelete = romCount === 0;
@@ -524,9 +702,12 @@ export class AppSettingsPlatforms extends LitElement {
             </div>
             
             <div class="firmware-section">
-                <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xs);">
                     <strong>Required Firmware</strong>
-                    <ui-button variant="secondary" size="sm" style="float: right;" @click=${() => this.openMappingDialog(platform.id)}>Map File</ui-button>
+                    <div style="display: flex; gap: var(--spacing-xs);">
+                        <ui-button variant="primary" size="sm" @click=${() => this.openUploadDialog(platform)}>Upload Firmware</ui-button>
+                        <ui-button variant="secondary" size="sm" @click=${() => this.openMappingDialog(platform.id)}>Map File</ui-button>
+                    </div>
                 </div>
                 ${!platform.firmware || platform.firmware.length === 0 ? html`
                     <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--spacing-sm);">
@@ -534,15 +715,49 @@ export class AppSettingsPlatforms extends LitElement {
                     </p>
                 ` : html`
                     <div class="firmware-list">
-                        ${map(platform.firmware!, fw => html`
-                            <div class="firmware-item">
-                                <div>
-                                    <div style="font-weight: bold;">${fw.filename}</div>
-                                    <div class="firmware-path">${fw.path}</div>
+                        ${map(platform.firmware!, fw => {
+                            const isMulti = Boolean(fw.files && fw.files.length > 1);
+                            const isExpanded = this.expandedFirmwareIds.has(fw.id);
+                            return html`
+                                <div class="firmware-item-container">
+                                    <div class="firmware-item">
+                                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                                            <div style="display: flex; align-items: center; gap: var(--spacing-xs); flex-wrap: wrap;">
+                                                <span style="font-weight: bold;">${fw.name || fw.filename}</span>
+                                                ${isMulti ? html`
+                                                    <ui-badge variant="secondary">${fw.files!.length} files</ui-badge>
+                                                ` : ''}
+                                                ${fw.totalSize ? html`
+                                                    <span style="color: var(--color-text-secondary); font-size: 0.85em;">(${this.formatBytes(fw.totalSize)})</span>
+                                                ` : ''}
+                                            </div>
+                                            <div class="firmware-path">${fw.path}</div>
+                                        </div>
+                                        <div style="display: flex; gap: var(--spacing-xs); align-items: center;">
+                                            ${isMulti ? html`
+                                                <ui-button variant="secondary" size="sm" @click=${() => this.toggleExpandFirmware(fw.id)}>
+                                                    ${isExpanded ? 'Hide Files' : 'View Files'}
+                                                </ui-button>
+                                            ` : ''}
+                                            <ui-button variant="error" size="sm" @click=${() => this.removeFirmware(fw.id)}>Remove</ui-button>
+                                        </div>
+                                    </div>
+                                    ${isMulti && isExpanded ? html`
+                                        <div class="firmware-child-files">
+                                            ${map(fw.files!, cf => html`
+                                                <div class="firmware-child-file">
+                                                    <span style="font-weight: 500;">${cf.relPath || cf.filename}</span>
+                                                    <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                                                        <span>${this.formatBytes(cf.size)}</span>
+                                                        <span style="font-size: 0.9em; opacity: 0.7;">${cf.path}</span>
+                                                    </div>
+                                                </div>
+                                            `)}
+                                        </div>
+                                    ` : ''}
                                 </div>
-                                <ui-button variant="error" size="sm" @click=${() => this.removeFirmware(fw.id)}>Remove</ui-button>
-                            </div>
-                        `)}
+                            `;
+                        })}
                     </div>
                 `}
             </div>
@@ -682,6 +897,73 @@ export class AppSettingsPlatforms extends LitElement {
             <div slot="actions">
                 <ui-button variant="secondary" @click=${this.closeAddPlatformDialog}>Cancel</ui-button>
                 <ui-button variant="primary" type="submit" form="add-platform-form" ?disabled=${!this.newPlatformName.trim()}>Add Platform</ui-button>
+            </div>
+        </ui-dialog>
+
+        <ui-dialog 
+            ?open=${this.isUploadDialogOpen} 
+            @ui-dialog-close=${this.closeUploadDialog}
+            heading="Upload Firmware - ${this.uploadPlatformName}">
+            <form id="upload-firmware-form" @submit=${this.submitFirmwareUpload}>
+                <div style="margin-bottom: var(--spacing-md);">
+                    <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: bold; color: var(--color-text-secondary);">Firmware Bundle Name (optional)</label>
+                    <input type="text" 
+                        .value=${this.uploadCustomName} 
+                        @input=${(e: Event) => (this.uploadCustomName = (e.target as HTMLInputElement).value)}
+                        placeholder="e.g. PlayStation 2 BIOS SCPH-39001"
+                        style="width: 100%; padding: var(--spacing-sm); border: 1px solid var(--border-color); background: var(--color-bg-tertiary); color: var(--color-text-primary); border-radius: var(--border-radius-sm);" />
+                </div>
+                
+                <div style="margin-bottom: var(--spacing-md);">
+                    <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: bold; color: var(--color-text-secondary);">Description (optional)</label>
+                    <input type="text" 
+                        .value=${this.uploadDescription} 
+                        @input=${(e: Event) => (this.uploadDescription = (e.target as HTMLInputElement).value)}
+                        placeholder="e.g. System BIOS files required for emulation"
+                        style="width: 100%; padding: var(--spacing-sm); border: 1px solid var(--border-color); background: var(--color-bg-tertiary); color: var(--color-text-primary); border-radius: var(--border-radius-sm);" />
+                </div>
+
+                <div class="drop-zone ${this.isDraggingOver ? 'dragover' : ''}"
+                    @dragover=${this.handleDragOver}
+                    @dragleave=${this.handleDragLeave}
+                    @drop=${this.handleUploadDrop}
+                    @click=${() => this.shadowRoot?.querySelector<HTMLInputElement>('#firmware-file-input')?.click()}>
+                    <input type="file" 
+                        id="firmware-file-input" 
+                        multiple 
+                        style="display: none;" 
+                        @change=${this.handleUploadFilesSelected} />
+                    <div style="font-weight: bold; margin-bottom: var(--spacing-xs); color: var(--color-text-primary);">
+                        Click to select or drag & drop files here
+                    </div>
+                    <div style="font-size: 0.85em; color: var(--color-text-secondary);">
+                        Supports multiple files (.bin, .rom, .bios) or .zip archives (extracted automatically)
+                    </div>
+                </div>
+
+                ${this.selectedUploadFiles.length > 0 ? html`
+                    <div class="selected-files-list">
+                        <div style="font-weight: bold; font-size: var(--font-size-sm); margin-bottom: var(--spacing-xs);">
+                            Selected Files (${this.selectedUploadFiles.length}):
+                        </div>
+                        ${this.selectedUploadFiles.map((file, idx) => html`
+                            <div class="selected-file-row">
+                                <span style="font-weight: 500;">${file.name}</span>
+                                <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                                    <span style="color: var(--color-text-secondary); font-size: 0.9em;">${this.formatBytes(file.size)}</span>
+                                    <ui-button variant="error" size="sm" @click=${(e: Event) => { e.stopPropagation(); this.removeSelectedUploadFile(idx); }}>Remove</ui-button>
+                                </div>
+                            </div>
+                        `)}
+                    </div>
+                ` : ''}
+            </form>
+            
+            <div slot="actions">
+                <ui-button variant="secondary" @click=${this.closeUploadDialog} ?disabled=${this.isUploading}>Cancel</ui-button>
+                <ui-button variant="primary" type="submit" form="upload-firmware-form" ?disabled=${this.isUploading || this.selectedUploadFiles.length === 0}>
+                    ${this.isUploading ? 'Uploading...' : 'Upload Firmware'}
+                </ui-button>
             </div>
         </ui-dialog>
       </div>

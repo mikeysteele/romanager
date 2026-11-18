@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "../db/index.ts";
-import { romFiles, systemFirmware } from "../db/schema.ts";
+import { romFiles, systemFirmware, systemFirmwareFiles } from "../db/schema.ts";
 import { eq } from "drizzle-orm";
 import { requireAuth, type AuthVariables } from "../auth.ts";
 import { generateManifest } from "../manifest.ts";
@@ -19,7 +19,7 @@ syncRouter.get("/files/:fileId", async (c) => {
   const apiKey = c.get("apiKey");
   const device = c.get("device");
 
-  // 1. Locate file record in rom_files or system_firmware
+  // 1. Locate file record in rom_files, system_firmware_files, or system_firmware
   let filePath: string | null = null;
   let fileSha1: string | null = null;
 
@@ -28,10 +28,16 @@ syncRouter.get("/files/:fileId", async (c) => {
     filePath = romFile.path;
     fileSha1 = romFile.sha1;
   } else {
-    const fw = await db.select().from(systemFirmware).where(eq(systemFirmware.id, fileId)).get();
-    if (fw) {
-      filePath = fw.path;
-      fileSha1 = fw.sha1;
+    const fwFile = await db.select().from(systemFirmwareFiles).where(eq(systemFirmwareFiles.id, fileId)).get();
+    if (fwFile) {
+      filePath = fwFile.path;
+      fileSha1 = fwFile.sha1;
+    } else {
+      const fw = await db.select().from(systemFirmware).where(eq(systemFirmware.id, fileId)).get();
+      if (fw) {
+        filePath = fw.path;
+        fileSha1 = fw.sha1;
+      }
     }
   }
 

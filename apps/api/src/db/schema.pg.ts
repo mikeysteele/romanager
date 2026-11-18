@@ -17,9 +17,11 @@ export const selectSystemSchema = createSelectSchema(systems);
 export const systemFirmware = pgTable("system_firmware", {
   id: text("id").primaryKey(),
   systemId: text("system_id").notNull().references(() => systems.id),
+  name: text("name"),
   filename: text("filename").notNull(),
   description: text("description"),
   path: text("path").notNull().unique(),
+  totalSize: bigint("total_size", { mode: 'number' }),
   md5: text("md5"),
   crc32: text("crc32"),
   sha1: text("sha1"),
@@ -34,6 +36,26 @@ export const systemFirmware = pgTable("system_firmware", {
 }));
 export const insertSystemFirmwareSchema = createInsertSchema(systemFirmware);
 export const selectSystemFirmwareSchema = createSelectSchema(systemFirmware);
+
+export const systemFirmwareFiles = pgTable("system_firmware_files", {
+  id: text("id").primaryKey(),
+  firmwareId: text("firmware_id").notNull().references(() => systemFirmware.id, { onDelete: 'cascade' }),
+  relPath: text("rel_path").notNull(),
+  path: text("path").notNull(),
+  filename: text("filename").notNull(),
+  size: bigint("size", { mode: 'number' }).notNull(),
+  sha1: text("sha1"),
+  md5: text("md5"),
+  crc32: text("crc32"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP::text`),
+}, (table) => ({
+  firmwareIdIdx: index("system_firmware_files_firmware_id_idx").on(table.firmwareId),
+  pathIdx: index("system_firmware_files_path_idx").on(table.path),
+}));
+export const insertSystemFirmwareFileSchema = createInsertSchema(systemFirmwareFiles);
+export const selectSystemFirmwareFileSchema = createSelectSchema(systemFirmwareFiles);
 
 export const games = pgTable("games", {
   id: text("id").primaryKey(), // RAWG ID or UUID

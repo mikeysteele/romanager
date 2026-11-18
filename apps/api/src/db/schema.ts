@@ -14,6 +14,10 @@ export const systemFirmware = activeSchema.systemFirmware;
 export const insertSystemFirmwareSchema = activeSchema.insertSystemFirmwareSchema;
 export const selectSystemFirmwareSchema = activeSchema.selectSystemFirmwareSchema;
 
+export const systemFirmwareFiles = activeSchema.systemFirmwareFiles;
+export const insertSystemFirmwareFileSchema = activeSchema.insertSystemFirmwareFileSchema;
+export const selectSystemFirmwareFileSchema = activeSchema.selectSystemFirmwareFileSchema;
+
 export const games = activeSchema.games;
 export const insertGameSchema = activeSchema.insertGameSchema;
 export const selectGameSchema = activeSchema.selectGameSchema;

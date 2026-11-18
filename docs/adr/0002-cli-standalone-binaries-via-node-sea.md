@@ -1,6 +1,6 @@
 # ADR 0002: CLI Standalone Binary Distribution via Node.js Single Executable Applications (SEA)
 
-- **Status**: Accepted
+- **Status**: Superseded by [ADR 0004](0004-cli-aot-compilation-via-scriptc.md)
 - **Date**: 2026-10-13
 - **Deciders**: Romanager Core Team
 

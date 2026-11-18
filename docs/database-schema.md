@@ -167,16 +167,38 @@ Individual physical ROM files linked to a game and system.
 ---
 
 ### 6. `system_firmware`
-Stores firmware, BIOS, and OS files required by emulators.
+Stores firmware, BIOS, and OS definitions required by emulators. Represents both single-file and multi-file firmware packages.
 
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `text` | `PRIMARY KEY` | Firmware UUID |
 | `system_id` | `text` | `NOT NULL REFERENCES systems(id)` | Target system |
-| `filename` | `text` | `NOT NULL` | BIOS filename (e.g., `scph1001.bin`) |
+| `name` | `text` | `NULL` | Bundle / firmware name (e.g., "SCPH-39001 BIOS") |
+| `filename` | `text` | `NOT NULL` | Primary BIOS filename |
 | `description` | `text` | `NULL` | Human-readable note or version |
 | `path` | `text` | `NOT NULL UNIQUE` | Absolute path on disk |
-| `md5` | `text` | `NULL` | MD5 checksum for BIOS validation |
+| `total_size` | `integer` | `NULL` | Total size of all child files in bytes |
+| `md5` | `text` | `NULL` | MD5 checksum for primary BIOS file |
+| `crc32` | `text` | `NULL` | CRC32 checksum |
+| `sha1` | `text` | `NULL` | SHA1 checksum |
+| `created_at` | `text` | `NOT NULL DEFAULT CURRENT_TIMESTAMP` | Timestamp |
+| `updated_at` | `text` | `NOT NULL DEFAULT CURRENT_TIMESTAMP` | Timestamp |
+
+---
+
+### 6b. `system_firmware_files`
+Stores individual member files associated with a parent firmware bundle (supports multi-file BIOS/firmware sets).
+
+| Column | Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `text` | `PRIMARY KEY` | Child file UUID |
+| `firmware_id` | `text` | `NOT NULL REFERENCES system_firmware(id) ON DELETE CASCADE` | Parent firmware package |
+| `rel_path` | `text` | `NOT NULL` | Relative path within BIOS package / directory |
+| `path` | `text` | `NOT NULL` | Absolute filesystem path on server disk |
+| `filename` | `text` | `NOT NULL` | Base filename (e.g. `scph39001.nvm`) |
+| `size` | `integer` | `NOT NULL` | File size in bytes |
+| `sha1` | `text` | `NULL` | SHA1 checksum |
+| `md5` | `text` | `NULL` | MD5 checksum |
 | `crc32` | `text` | `NULL` | CRC32 checksum |
 | `created_at` | `text` | `NOT NULL DEFAULT CURRENT_TIMESTAMP` | Timestamp |
 

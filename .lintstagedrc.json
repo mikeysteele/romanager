@@ -1,5 +1,5 @@
 {
-  "*.{ts,tsx,js,jsx}": [
-    "npx oxlint --type-aware"
+  "**/*.{ts,tsx,js,jsx}": [
+    "oxlint --type-aware"
   ]
 }
