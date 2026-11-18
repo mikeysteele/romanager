@@ -1,9 +1,9 @@
-import { resolve } from "node:path";
 import { stat } from "node:fs/promises";
 import { loadConfig } from "../config.ts";
 import { loadState, saveState, getStatePath } from "../state.ts";
 import { ApiClient } from "../api-client.ts";
 import { calculateFileSha1 } from "../hasher.ts";
+import { resolveSetFilePath } from "../path-utils.ts";
 
 export interface AdoptOptions {
   configPath?: string;
@@ -34,12 +34,11 @@ export async function runAdopt(options: AdoptOptions): Promise<void> {
   const adopted: Array<{ id: string; name: string; filesCount: number }> = [];
 
   for (const set of sets) {
-    const rootDir = set.kind === "firmware" ? config.paths.bios : config.paths.roms;
     let allMatch = true;
     const fileStats: Record<string, { sha1: string; size: number; mtime: number }> = {};
 
     for (const f of set.files) {
-      const fullPath = resolve(rootDir, f.path);
+      const fullPath = resolveSetFilePath(config, set.kind, f.path);
       try {
         const s = await stat(fullPath);
         if (s.size !== f.size) {

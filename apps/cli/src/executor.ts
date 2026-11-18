@@ -1,5 +1,5 @@
 import { dirname, resolve } from "node:path";
-import { mkdir, link, copyFile, cp, rename, rm, stat } from "node:fs/promises";
+import { mkdir, link, copyFile, rename, rm, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { Manifest } from "@repo/shared";
@@ -9,6 +9,7 @@ import { type SyncPlan, getFreeDiskBytes } from "./planner.ts";
 import type { ApiClient } from "./api-client.ts";
 import { calculateFileSha1 } from "./hasher.ts";
 import { InsufficientDiskSpaceError, PartialSyncError } from "./errors.ts";
+import { getLocalRelativePath, resolveSetFilePath } from "./path-utils.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -63,9 +64,8 @@ export async function executeSyncPlan(
   for (const item of plan.toRemove) {
     try {
       log(`Removing set: ${item.key}`);
-      const rootDir = item.record.kind === "firmware" ? config.paths.bios : config.paths.roms;
       for (const relPath of Object.keys(item.record.files)) {
-        const fullPath = resolve(rootDir, relPath);
+        const fullPath = resolveSetFilePath(config, item.record.kind, relPath);
         await removeFileOrTrash(fullPath, item.key, config);
       }
       delete state.sets[item.key];
@@ -97,8 +97,8 @@ export async function executeSyncPlan(
         for (const f of set.files) {
           const needsDownload = item.filesToDownload.some((d) => d.id === f.id);
           if (!needsDownload) {
-            const currentInstalledPath = resolve(rootDir, f.path);
-            const stagedTarget = resolve(stagingDir, f.path);
+            const currentInstalledPath = resolveSetFilePath(config, set.kind, f.path);
+            const stagedTarget = resolve(stagingDir, getLocalRelativePath(set.kind, f.path));
             await mkdir(dirname(stagedTarget), { recursive: true });
             try {
               await link(currentInstalledPath, stagedTarget);
@@ -111,7 +111,7 @@ export async function executeSyncPlan(
 
       // Download needed files into staging
       for (const f of item.filesToDownload) {
-        const stagedTarget = resolve(stagingDir, f.path);
+        const stagedTarget = resolve(stagingDir, getLocalRelativePath(set.kind, f.path));
         await apiClient.downloadFile(f.id, stagedTarget, f.sha1, (_bytes) => {
           // progress callback if needed
         });
@@ -119,7 +119,7 @@ export async function executeSyncPlan(
 
       // Verify all staged files
       for (const f of set.files) {
-        const stagedTarget = resolve(stagingDir, f.path);
+        const stagedTarget = resolve(stagingDir, getLocalRelativePath(set.kind, f.path));
         const actualSha1 = await calculateFileSha1(stagedTarget);
         if (f.sha1 && actualSha1.toLowerCase() !== f.sha1.toLowerCase()) {
           throw new Error(
@@ -128,36 +128,22 @@ export async function executeSyncPlan(
         }
       }
 
-      // Commit into place atomically
-      if (set.setType === "directory") {
-        const targetDir = resolve(rootDir, dirname(set.launchPath));
-        // Move staged dir into target dir
-        await mkdir(dirname(targetDir), { recursive: true });
-        try {
-          await rename(stagingDir, targetDir);
-        } catch {
-          // Fallback if renaming across boundaries
-          await cp(stagingDir, targetDir, { recursive: true, force: true });
-          await rm(stagingDir, { recursive: true, force: true });
-        }
-      } else {
-        // Non-launch files first!
-        const launchFileObj = set.files.find((f) => f.path === set.launchPath) || set.files[0];
-        const nonLaunchFiles = set.files.filter((f) => f.path !== launchFileObj.path);
+      // Commit into place atomically (non-launch files first, launch file last)
+      const launchFileObj = set.files.find((f) => f.path === set.launchPath) || set.files[0];
+      const nonLaunchFiles = set.files.filter((f) => f.path !== launchFileObj.path);
 
-        for (const f of nonLaunchFiles) {
-          const stagedPath = resolve(stagingDir, f.path);
-          const destPath = resolve(rootDir, f.path);
-          await mkdir(dirname(destPath), { recursive: true });
-          await rename(stagedPath, destPath);
-        }
-
-        // Launch file LAST!
-        const stagedLaunch = resolve(stagingDir, launchFileObj.path);
-        const destLaunch = resolve(rootDir, launchFileObj.path);
-        await mkdir(dirname(destLaunch), { recursive: true });
-        await rename(stagedLaunch, destLaunch);
+      for (const f of nonLaunchFiles) {
+        const stagedPath = resolve(stagingDir, getLocalRelativePath(set.kind, f.path));
+        const destPath = resolveSetFilePath(config, set.kind, f.path);
+        await mkdir(dirname(destPath), { recursive: true });
+        await rename(stagedPath, destPath);
       }
+
+      // Launch file LAST!
+      const stagedLaunch = resolve(stagingDir, getLocalRelativePath(set.kind, launchFileObj.path));
+      const destLaunch = resolveSetFilePath(config, set.kind, launchFileObj.path);
+      await mkdir(dirname(destLaunch), { recursive: true });
+      await rename(stagedLaunch, destLaunch);
 
       // Clean staging dir
       try {
@@ -169,7 +155,7 @@ export async function executeSyncPlan(
       // Record set in state.json
       const fileRecords: StateSetRecord["files"] = {};
       for (const f of set.files) {
-        const fullPath = resolve(rootDir, f.path);
+        const fullPath = resolveSetFilePath(config, set.kind, f.path);
         let mtime = Date.now();
         try {
           const s = await stat(fullPath);

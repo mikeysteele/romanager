@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/mikeysteele/romanager/compare/romanager-v1.1.1...romanager-v1.2.0) (2026-11-11)
+
+
+### Features
+
+* **firmware:** support multi-file firmware data model and browser upload ([#48](https://github.com/mikeysteele/romanager/issues/48)) ([3b9b01c](https://github.com/mikeysteele/romanager/commit/3b9b01c9da512dad535ff5ec9b2d997401ac9e11))
+
 ## [1.1.1](https://github.com/mikeysteele/romanager/compare/romanager-v1.1.0...romanager-v1.1.1) (2026-11-11)
 
 
