@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
-    "@commitlint/config-conventional": "^19.6.0",
+    "@commitlint/config-conventional": "^21.2.4",
     "@libsql/client": "^0.18.0",
     "@playwright/test": "^1.64.1",
     "@types/jsdom": "^30.0.0",
