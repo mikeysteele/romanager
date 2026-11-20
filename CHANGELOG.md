@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.2.1](https://github.com/mikeysteele/romanager/compare/romanager-v1.2.0...romanager-v1.2.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* **cli:** support multi-file firmware directory sync and strip bios/ prefix ([#53](https://github.com/mikeysteele/romanager/issues/53)) ([459e377](https://github.com/mikeysteele/romanager/commit/459e37738d83f86dc9868f82bbb9e7f6ad9607b9))
+
+
+### Documentation
+
+* add ADR 0004 for scriptc CLI and update feature & architecture docs ([#55](https://github.com/mikeysteele/romanager/issues/55)) ([0815e7d](https://github.com/mikeysteele/romanager/commit/0815e7db1d499e5acce016095c5137498b4e3161))
+* **agent:** add AGENTS.md enforcing fresh branches from origin/main ([#56](https://github.com/mikeysteele/romanager/issues/56)) ([887ee7e](https://github.com/mikeysteele/romanager/commit/887ee7e143f0350c9cccd2286a44bae2e7307cc9))
+
+
+### Miscellaneous Chores
+
+* **deps:** bump @commitlint/config-conventional from 19.8.1 to 21.2.4 ([#35](https://github.com/mikeysteele/romanager/issues/35)) ([25ed276](https://github.com/mikeysteele/romanager/commit/25ed276e5b3215830077866aae33cce5932db6ca))
+* **deps:** bump @hono/node-server from 2.1.5 to 2.1.8 ([#58](https://github.com/mikeysteele/romanager/issues/58)) ([fc486d5](https://github.com/mikeysteele/romanager/commit/fc486d5c01d50955fe9311e7ef3822a8f8c5485c))
+* **deps:** bump @playwright/test from 1.64.1 to 1.65.1 ([#44](https://github.com/mikeysteele/romanager/issues/44)) ([a2ddcd6](https://github.com/mikeysteele/romanager/commit/a2ddcd6de173f5aa38a80acf3f6af1cfda88ee96))
+* **deps:** bump @types/node from 22.20.5 to 26.6.6 ([#57](https://github.com/mikeysteele/romanager/issues/57)) ([6d819fa](https://github.com/mikeysteele/romanager/commit/6d819faf62889e00780395dcdf5e5424899acece))
+* **deps:** bump dotenv from 16.6.1 to 18.0.10 ([#59](https://github.com/mikeysteele/romanager/issues/59)) ([3824eb9](https://github.com/mikeysteele/romanager/commit/3824eb91b37beb07fe27d6ad8ca4a859674059da))
+* **deps:** bump hono from 4.13.14 to 4.13.17 ([#46](https://github.com/mikeysteele/romanager/issues/46)) ([8c8700f](https://github.com/mikeysteele/romanager/commit/8c8700f983b166f5bd88dc036a54ee3d270c6d41))
+* **deps:** bump oxlint-tsgolint from 7.0.2005 to 7.0.2007 ([#61](https://github.com/mikeysteele/romanager/issues/61)) ([cc3a75a](https://github.com/mikeysteele/romanager/commit/cc3a75a06c2e6b8bfa46727e43b62258c88d7d6a))
+* **deps:** bump rolldown from 1.2.15 to 1.3.2 ([#60](https://github.com/mikeysteele/romanager/issues/60)) ([ca88990](https://github.com/mikeysteele/romanager/commit/ca88990be8878e654a076dfe78b351c0505f9fe0))
+* **deps:** bump vitest from 5.0.4 to 5.0.5 ([#38](https://github.com/mikeysteele/romanager/issues/38)) ([f6561bc](https://github.com/mikeysteele/romanager/commit/f6561bc57bd43e394bd52d7777d5c6f930df7158))
+* **deps:** bump zod from 3.25.76 to 4.6.7 ([#34](https://github.com/mikeysteele/romanager/issues/34)) ([72e08e1](https://github.com/mikeysteele/romanager/commit/72e08e1d2c4a9d05b29cefc04b5b0bf4aff087c7))
+
 ## [1.2.0](https://github.com/mikeysteele/romanager/compare/romanager-v1.1.1...romanager-v1.2.0) (2026-11-11)
 
 
