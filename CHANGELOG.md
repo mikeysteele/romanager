@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.2](https://github.com/mikeysteele/romanager/compare/romanager-v1.2.1...romanager-v1.2.2) (2026-11-28)
+
+
+### Miscellaneous Chores
+
+* **deps:** bump lint-staged from 17.6.0 to 17.6.1 ([#62](https://github.com/mikeysteele/romanager/issues/62)) ([8bc6294](https://github.com/mikeysteele/romanager/commit/8bc6294b89ce57bbff54d0e61fffbc76abc52944))
+* **deps:** bump vitest from 5.0.5 to 5.1.1 ([#63](https://github.com/mikeysteele/romanager/issues/63)) ([a5493a2](https://github.com/mikeysteele/romanager/commit/a5493a28f118878f691a4aff2a590b6de474e124))
+
 ## [1.2.1](https://github.com/mikeysteele/romanager/compare/romanager-v1.2.0...romanager-v1.2.1) (2026-11-20)
 
 
