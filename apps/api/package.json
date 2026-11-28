@@ -22,7 +22,7 @@
     "@repo/shared": "workspace:*",
     "dotenv": "^18.0.10",
     "drizzle-orm": "^0.45.4",
-    "drizzle-zod": "^0.5.1",
+    "drizzle-zod": "^0.8.3",
     "hono": "^4.13.17",
     "postgres": "^3.4.9",
     "ts-pattern": "^5.9.2",
