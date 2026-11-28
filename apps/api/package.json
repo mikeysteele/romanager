@@ -24,7 +24,7 @@
     "drizzle-orm": "^0.45.4",
     "drizzle-zod": "^0.5.1",
     "hono": "^4.13.17",
-    "postgres": "^3.4.9",
+    "postgres": "^4.1.1",
     "ts-pattern": "^5.9.2",
     "zod": "^4.6.7"
   },
